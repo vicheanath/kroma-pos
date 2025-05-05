@@ -1,6 +1,11 @@
-# KromaPOS
 
-![KromaPOS Logo](./public/logo.png)
+
+<h1 align="center">
+  <img src="./public/logo.png" alt="KromaPOS Logo" width="200"/>
+  <h1>KromaPOS</h1>
+  <p>Open-source, offline-first Point of Sale system for small and medium-sized businesses.</p>
+</h1>
+
 
 **KromaPOS** is an open-source, offline-first Point of Sale (POS) system built with **React** and **Electron**, designed to empower small and medium-sized businesses in Cambodia and beyond. With a sleek interface, modern tech stack, and local-first mindset, KromaPOS makes selling easy—whether you're online or completely offline.
 
