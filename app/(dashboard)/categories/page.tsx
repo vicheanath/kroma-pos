@@ -34,7 +34,6 @@ import {
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Search, Plus, MoreVertical, Edit, Trash2, Tags } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
 
 // Define the schema for Category using zod
 const categorySchema = z.object({
@@ -67,7 +66,6 @@ export default function CategoriesPage() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [currentCategory, setCurrentCategory] = useState<Category | null>(null);
-  const {toast} = useToast();
   const {
     register,
     handleSubmit,
@@ -97,7 +95,6 @@ export default function CategoriesPage() {
     addNewCategory({
       ...data
     });
-    console.log("Category added:", data);
     reset();
     setIsAddDialogOpen(false);
   };

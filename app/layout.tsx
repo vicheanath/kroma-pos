@@ -5,6 +5,7 @@ import "@/app/globals.css";
 import { Inter } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
 import { DatabaseInitializer } from "@/components/database-initializer";
+import { PosDataProvider } from "@/components/pos-data-provider";
 const inter = Inter({ subsets: ["latin"] });
 
 export default function RootLayout({
@@ -12,7 +13,6 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
@@ -22,7 +22,9 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <DatabaseInitializer>{children}</DatabaseInitializer>
+          <DatabaseInitializer>
+            <PosDataProvider>{children}</PosDataProvider>
+          </DatabaseInitializer>
         </ThemeProvider>
       </body>
     </html>
