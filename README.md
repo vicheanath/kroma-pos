@@ -3,7 +3,7 @@
 <h1 align="center">
   <img src="./public/logo.png" alt="KromaPOS Logo" width="200"/>
   <h1>KromaPOS</h1>
-  <p>Open-source, offline-first Point of Sale system for small and medium-sized businesses.</p>
+  <p>Empowering Local Commerce — Anywhere, Anytime.</p>
 </h1>
 
 
