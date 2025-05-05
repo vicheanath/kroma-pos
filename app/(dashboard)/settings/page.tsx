@@ -1,22 +1,36 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { motion } from "framer-motion"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Label } from "@/components/ui/label"
-import { Input } from "@/components/ui/input"
-import { Switch } from "@/components/ui/switch"
-import { Button } from "@/components/ui/button"
-import { Separator } from "@/components/ui/separator"
-import { useToast } from "@/components/ui/use-toast"
-import { useThemeSettings } from "@/components/theme-settings-provider"
-import { useReceiptSettings } from "@/components/receipt-settings-provider"
+import { useState, useEffect } from "react";
+import { motion } from "framer-motion";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
+import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
+import { useToast } from "@/components/ui/use-toast";
+import { useReceiptSettings } from "@/components/receipt-settings-provider";
+import { useTheme } from "next-themes";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export default function SettingsPage() {
-  const { toast } = useToast()
-  const { theme, setTheme } = useThemeSettings()
-  const { settings: receiptSettings, updateSettings: updateReceiptSettings } = useReceiptSettings()
+  const { toast } = useToast();
+  const { theme, setTheme } = useTheme();
+  const { settings: receiptSettings, updateSettings: updateReceiptSettings } =
+    useReceiptSettings();
 
   const [storeSettings, setStoreSettings] = useState({
     name: "My Store",
@@ -24,14 +38,14 @@ export default function SettingsPage() {
     phone: "+1 (555) 123-4567",
     email: "contact@mystore.com",
     taxRate: "7.5",
-  })
+  });
 
   const [syncSettings, setSyncSettings] = useState({
     autoSync: true,
     syncInterval: "15",
     syncOnStartup: true,
     syncOnShutdown: true,
-  })
+  });
 
   // Load store settings from receipt settings
   useEffect(() => {
@@ -42,9 +56,9 @@ export default function SettingsPage() {
         phone: receiptSettings.storePhone || "+1 (555) 123-4567",
         email: receiptSettings.storeEmail || "contact@mystore.com",
         taxRate: receiptSettings.taxRate?.toString() || "7.5",
-      })
+      });
     }
-  }, [receiptSettings])
+  }, [receiptSettings]);
 
   const handleSaveStoreSettings = async () => {
     try {
@@ -54,46 +68,46 @@ export default function SettingsPage() {
         storePhone: storeSettings.phone,
         storeEmail: storeSettings.email,
         taxRate: Number.parseFloat(storeSettings.taxRate),
-      })
+      });
 
       toast({
         title: "Store Settings Saved",
         description: "Your store settings have been saved successfully.",
-      })
+      });
     } catch (error) {
-      console.error("Failed to save store settings:", error)
+      console.error("Failed to save store settings:", error);
       toast({
         title: "Error",
         description: "Failed to save store settings",
         variant: "destructive",
-      })
+      });
     }
-  }
+  };
 
   const handleSaveReceiptSettings = async () => {
     try {
-      await updateReceiptSettings(receiptSettings)
+      await updateReceiptSettings(receiptSettings);
 
       toast({
         title: "Receipt Settings Saved",
         description: "Your receipt settings have been saved successfully.",
-      })
+      });
     } catch (error) {
-      console.error("Failed to save receipt settings:", error)
+      console.error("Failed to save receipt settings:", error);
       toast({
         title: "Error",
         description: "Failed to save receipt settings",
         variant: "destructive",
-      })
+      });
     }
-  }
+  };
 
   const handleSaveSyncSettings = () => {
     toast({
       title: "Sync Settings Saved",
       description: "Your sync settings have been saved successfully.",
-    })
-  }
+    });
+  };
 
   // Animation variants
   const containerVariants = {
@@ -104,18 +118,25 @@ export default function SettingsPage() {
         staggerChildren: 0.1,
       },
     },
-  }
+  };
 
   const itemVariants = {
     hidden: { y: 20, opacity: 0 },
     show: { y: 0, opacity: 1 },
-  }
+  };
 
   return (
-    <motion.div variants={containerVariants} initial="hidden" animate="show" className="space-y-6">
+    <motion.div
+      variants={containerVariants}
+      initial="hidden"
+      animate="show"
+      className="space-y-6"
+    >
       <motion.div variants={itemVariants}>
         <h1 className="text-2xl font-bold tracking-tight">Settings</h1>
-        <p className="text-muted-foreground">Manage your store settings and preferences.</p>
+        <p className="text-muted-foreground">
+          Manage your store settings and preferences.
+        </p>
       </motion.div>
 
       <Tabs defaultValue="general" className="space-y-6">
@@ -133,7 +154,10 @@ export default function SettingsPage() {
             <Card>
               <CardHeader>
                 <CardTitle>Store Information</CardTitle>
-                <CardDescription>Update your store details that will appear on receipts and reports.</CardDescription>
+                <CardDescription>
+                  Update your store details that will appear on receipts and
+                  reports.
+                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
@@ -141,7 +165,12 @@ export default function SettingsPage() {
                   <Input
                     id="store-name"
                     value={storeSettings.name}
-                    onChange={(e) => setStoreSettings({ ...storeSettings, name: e.target.value })}
+                    onChange={(e) =>
+                      setStoreSettings({
+                        ...storeSettings,
+                        name: e.target.value,
+                      })
+                    }
                   />
                 </div>
 
@@ -150,7 +179,12 @@ export default function SettingsPage() {
                   <Input
                     id="store-address"
                     value={storeSettings.address}
-                    onChange={(e) => setStoreSettings({ ...storeSettings, address: e.target.value })}
+                    onChange={(e) =>
+                      setStoreSettings({
+                        ...storeSettings,
+                        address: e.target.value,
+                      })
+                    }
                   />
                 </div>
 
@@ -160,7 +194,12 @@ export default function SettingsPage() {
                     <Input
                       id="store-phone"
                       value={storeSettings.phone}
-                      onChange={(e) => setStoreSettings({ ...storeSettings, phone: e.target.value })}
+                      onChange={(e) =>
+                        setStoreSettings({
+                          ...storeSettings,
+                          phone: e.target.value,
+                        })
+                      }
                     />
                   </div>
 
@@ -170,7 +209,12 @@ export default function SettingsPage() {
                       id="store-email"
                       type="email"
                       value={storeSettings.email}
-                      onChange={(e) => setStoreSettings({ ...storeSettings, email: e.target.value })}
+                      onChange={(e) =>
+                        setStoreSettings({
+                          ...storeSettings,
+                          email: e.target.value,
+                        })
+                      }
                     />
                   </div>
                 </div>
@@ -181,7 +225,12 @@ export default function SettingsPage() {
                     id="tax-rate"
                     type="number"
                     value={storeSettings.taxRate}
-                    onChange={(e) => setStoreSettings({ ...storeSettings, taxRate: e.target.value })}
+                    onChange={(e) =>
+                      setStoreSettings({
+                        ...storeSettings,
+                        taxRate: e.target.value,
+                      })
+                    }
                   />
                 </div>
               </CardContent>
@@ -197,34 +246,32 @@ export default function SettingsPage() {
             <Card>
               <CardHeader>
                 <CardTitle>Appearance Settings</CardTitle>
-                <CardDescription>Customize the look and feel of your POS system.</CardDescription>
+                <CardDescription>
+                  Customize the look and feel of your POS system.
+                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="space-y-4">
                   <div className="space-y-2">
-                    <Label>Theme</Label>
-                    <div className="flex flex-col space-y-1.5">
-                      <div className="flex items-center space-x-2">
-                        <Switch
-                          id="theme-light"
-                          checked={theme === "light"}
-                          onCheckedChange={() => setTheme("light")}
-                        />
-                        <Label htmlFor="theme-light">Light</Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Switch id="theme-dark" checked={theme === "dark"} onCheckedChange={() => setTheme("dark")} />
-                        <Label htmlFor="theme-dark">Dark</Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Switch
-                          id="theme-system"
-                          checked={theme === "system"}
-                          onCheckedChange={() => setTheme("system")}
-                        />
-                        <Label htmlFor="theme-system">System</Label>
-                      </div>
-                    </div>
+                    <Label htmlFor="theme-select">Theme</Label>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline" className="w-full">
+                          {theme.charAt(0).toUpperCase() + theme.slice(1)}
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent>
+                        <DropdownMenuItem onClick={() => setTheme("light")}>
+                          Light
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setTheme("dark")}>
+                          Dark
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setTheme("system")}>
+                          System
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                 </div>
               </CardContent>
@@ -237,18 +284,24 @@ export default function SettingsPage() {
             <Card>
               <CardHeader>
                 <CardTitle>Receipt Settings</CardTitle>
-                <CardDescription>Customize how receipts are generated and printed.</CardDescription>
+                <CardDescription>
+                  Customize how receipts are generated and printed.
+                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5">
                     <Label htmlFor="show-logo">Show Store Logo</Label>
-                    <p className="text-sm text-muted-foreground">Display your store logo at the top of receipts.</p>
+                    <p className="text-sm text-muted-foreground">
+                      Display your store logo at the top of receipts.
+                    </p>
                   </div>
                   <Switch
                     id="show-logo"
                     checked={receiptSettings.showLogo}
-                    onCheckedChange={(checked) => updateReceiptSettings({ showLogo: checked })}
+                    onCheckedChange={(checked) =>
+                      updateReceiptSettings({ showLogo: checked })
+                    }
                   />
                 </div>
 
@@ -257,12 +310,16 @@ export default function SettingsPage() {
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5">
                     <Label htmlFor="show-tax">Show Tax Details</Label>
-                    <p className="text-sm text-muted-foreground">Display tax breakdown on receipts.</p>
+                    <p className="text-sm text-muted-foreground">
+                      Display tax breakdown on receipts.
+                    </p>
                   </div>
                   <Switch
                     id="show-tax"
                     checked={receiptSettings.showTax}
-                    onCheckedChange={(checked) => updateReceiptSettings({ showTax: checked })}
+                    onCheckedChange={(checked) =>
+                      updateReceiptSettings({ showTax: checked })
+                    }
                   />
                 </div>
 
@@ -271,14 +328,18 @@ export default function SettingsPage() {
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5">
                     <Label htmlFor="custom-message">Add Custom Message</Label>
-                    <p className="text-sm text-muted-foreground">Include a custom message at the bottom of receipts.</p>
+                    <p className="text-sm text-muted-foreground">
+                      Include a custom message at the bottom of receipts.
+                    </p>
                   </div>
                   <Switch
                     id="custom-message"
                     checked={!!receiptSettings.thankYouMessage}
                     onCheckedChange={(checked) =>
                       updateReceiptSettings({
-                        thankYouMessage: checked ? "Thank you for your purchase!" : "",
+                        thankYouMessage: checked
+                          ? "Thank you for your purchase!"
+                          : "",
                       })
                     }
                   />
@@ -290,7 +351,11 @@ export default function SettingsPage() {
                     <Input
                       id="message-text"
                       value={receiptSettings.thankYouMessage}
-                      onChange={(e) => updateReceiptSettings({ thankYouMessage: e.target.value })}
+                      onChange={(e) =>
+                        updateReceiptSettings({
+                          thankYouMessage: e.target.value,
+                        })
+                      }
                     />
                   </div>
                 )}
@@ -300,17 +365,23 @@ export default function SettingsPage() {
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5">
                     <Label htmlFor="print-auto">Print Automatically</Label>
-                    <p className="text-sm text-muted-foreground">Automatically print receipt after each sale.</p>
+                    <p className="text-sm text-muted-foreground">
+                      Automatically print receipt after each sale.
+                    </p>
                   </div>
                   <Switch
                     id="print-auto"
                     checked={receiptSettings.printAutomatically}
-                    onCheckedChange={(checked) => updateReceiptSettings({ printAutomatically: checked })}
+                    onCheckedChange={(checked) =>
+                      updateReceiptSettings({ printAutomatically: checked })
+                    }
                   />
                 </div>
               </CardContent>
               <CardFooter>
-                <Button onClick={handleSaveReceiptSettings}>Save Changes</Button>
+                <Button onClick={handleSaveReceiptSettings}>
+                  Save Changes
+                </Button>
               </CardFooter>
             </Card>
           </motion.div>
@@ -321,29 +392,42 @@ export default function SettingsPage() {
             <Card>
               <CardHeader>
                 <CardTitle>Sync Settings</CardTitle>
-                <CardDescription>Configure how your POS system syncs data with the cloud.</CardDescription>
+                <CardDescription>
+                  Configure how your POS system syncs data with the cloud.
+                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5">
                     <Label htmlFor="auto-sync">Auto Sync</Label>
-                    <p className="text-sm text-muted-foreground">Automatically sync data with the cloud.</p>
+                    <p className="text-sm text-muted-foreground">
+                      Automatically sync data with the cloud.
+                    </p>
                   </div>
                   <Switch
                     id="auto-sync"
                     checked={syncSettings.autoSync}
-                    onCheckedChange={(checked) => setSyncSettings({ ...syncSettings, autoSync: checked })}
+                    onCheckedChange={(checked) =>
+                      setSyncSettings({ ...syncSettings, autoSync: checked })
+                    }
                   />
                 </div>
 
                 {syncSettings.autoSync && (
                   <div className="space-y-2">
-                    <Label htmlFor="sync-interval">Sync Interval (minutes)</Label>
+                    <Label htmlFor="sync-interval">
+                      Sync Interval (minutes)
+                    </Label>
                     <Input
                       id="sync-interval"
                       type="number"
                       value={syncSettings.syncInterval}
-                      onChange={(e) => setSyncSettings({ ...syncSettings, syncInterval: e.target.value })}
+                      onChange={(e) =>
+                        setSyncSettings({
+                          ...syncSettings,
+                          syncInterval: e.target.value,
+                        })
+                      }
                     />
                   </div>
                 )}
@@ -353,12 +437,19 @@ export default function SettingsPage() {
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5">
                     <Label htmlFor="sync-startup">Sync on Startup</Label>
-                    <p className="text-sm text-muted-foreground">Sync data when the application starts.</p>
+                    <p className="text-sm text-muted-foreground">
+                      Sync data when the application starts.
+                    </p>
                   </div>
                   <Switch
                     id="sync-startup"
                     checked={syncSettings.syncOnStartup}
-                    onCheckedChange={(checked) => setSyncSettings({ ...syncSettings, syncOnStartup: checked })}
+                    onCheckedChange={(checked) =>
+                      setSyncSettings({
+                        ...syncSettings,
+                        syncOnStartup: checked,
+                      })
+                    }
                   />
                 </div>
 
@@ -367,12 +458,19 @@ export default function SettingsPage() {
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5">
                     <Label htmlFor="sync-shutdown">Sync on Shutdown</Label>
-                    <p className="text-sm text-muted-foreground">Sync data when the application closes.</p>
+                    <p className="text-sm text-muted-foreground">
+                      Sync data when the application closes.
+                    </p>
                   </div>
                   <Switch
                     id="sync-shutdown"
                     checked={syncSettings.syncOnShutdown}
-                    onCheckedChange={(checked) => setSyncSettings({ ...syncSettings, syncOnShutdown: checked })}
+                    onCheckedChange={(checked) =>
+                      setSyncSettings({
+                        ...syncSettings,
+                        syncOnShutdown: checked,
+                      })
+                    }
                   />
                 </div>
               </CardContent>
@@ -384,5 +482,5 @@ export default function SettingsPage() {
         </TabsContent>
       </Tabs>
     </motion.div>
-  )
+  );
 }

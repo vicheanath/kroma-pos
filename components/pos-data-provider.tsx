@@ -156,6 +156,7 @@ export function PosDataProvider({ children }: { children: React.ReactNode }) {
   const addNewCategory = async (category: Omit<Category, "id">) => {
     try {
       const newCategory = { ...category, id: crypto.randomUUID() } as Category;
+
       await categoriesApi.add(newCategory);
       setCategories(await categoriesApi.getAll());
       toast({
