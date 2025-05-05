@@ -25,13 +25,6 @@ import { useForm, Controller, useFieldArray } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableRow,
-} from "@/components/ui/table";
 
 const productSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -115,6 +108,7 @@ export default function AddProductDialog({
     control,
     name: "variations",
   });
+  console.log("variationFields", errors);
 
   const [attributes, setAttributes] = useState<Record<string, string>>({});
 
@@ -135,7 +129,9 @@ export default function AddProductDialog({
   };
 
   const onSubmit = (data: ProductFormValues) => {
-    handleAddProduct({ ...data, attributes });
+    const finalData = { ...data, attributes };
+    console.log("Form Data:", finalData);
+    handleAddProduct(finalData);
   };
 
   return (
@@ -297,66 +293,83 @@ export default function AddProductDialog({
               id="tags"
               placeholder="Comma-separated tags"
               {...register("tags", {
-                // setValueAs: (value) => {
-                //   return value.split(",").map((tag:string) => tag.trim());
-                // }
+                setValueAs: (value) => {
+                  if (typeof value === "string") {
+                    return value.split(",").map((tag) => tag.trim());
+                  }
+                  return []; // Return an empty array if the value is not a string
+                },
               })}
             />
           </div>
           <div className="grid gap-2">
             <Label>Variations (Optional)</Label>
-            <Table className="table-fixed w-full">
-              <TableHead>
-                <TableRow>
-                  <TableCell className="w-1/4 font-bold">Name</TableCell>
-                  <TableCell className="w-1/4 font-bold">Price</TableCell>
-                  <TableCell className="w-1/4 font-bold">Stock</TableCell>
-                  <TableCell className="w-1/4 font-bold">Actions</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {variationFields.map((field, index) => (
-                  <TableRow key={field.id}>
-                    <TableCell className="w-1/4">
-                      <Input
-                        placeholder="Variation Name"
-                        {...register(`variations.${index}.name`)}
-                      />
-                    </TableCell>
-                    <TableCell className="w-1/4">
-                      <Input
-                        type="number"
-                        placeholder="Price"
-                        {...register(`variations.${index}.price`, {
-                          valueAsNumber: true,
-                        })}
-                      />
-                    </TableCell>
-                    <TableCell className="w-1/4">
-                      <Input
-                        type="number"
-                        placeholder="Stock"
-                        {...register(`variations.${index}.stock`, {
-                          valueAsNumber: true,
-                        })}
-                      />
-                    </TableCell>
-                    <TableCell className="w-1/4">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => removeVariation(index)}
-                      >
-                        Remove
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-            <Button
+            <div className="overflow-x-auto">
+              <table className="table-fixed w-full border-collapse border border-gray-300">
+                <thead>
+                  <tr className="bg-gray-100">
+                    <th className="w-1/4 px-4 py-2 text-left font-bold border border-gray-300">
+                      Name
+                    </th>
+                    <th className="w-1/4 px-4 py-2 text-left font-bold border border-gray-300">
+                      Price
+                    </th>
+                    <th className="w-1/4 px-4 py-2 text-left font-bold border border-gray-300">
+                      Stock
+                    </th>
+                    <th className="w-1/4 px-4 py-2 text-left font-bold border border-gray-300">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {variationFields.map((field, index) => (
+                    <tr key={field.id} className="hover:bg-gray-50">
+                      <td className="px-4 py-2 border border-gray-300">
+                        <input
+                          type="text"
+                          placeholder="Variation Name"
+                          className="w-full px-2 py-1 border border-gray-300 rounded"
+                          {...register(`variations.${index}.name`)}
+                        />
+                      </td>
+                      <td className="px-4 py-2 border border-gray-300">
+                        <input
+                          type="number"
+                          placeholder="Price"
+                          className="w-full px-2 py-1 border border-gray-300 rounded"
+                          {...register(`variations.${index}.price`, {
+                            valueAsNumber: true,
+                          })}
+                        />
+                      </td>
+                      <td className="px-4 py-2 border border-gray-300">
+                        <input
+                          type="number"
+                          placeholder="Stock"
+                          className="w-full px-2 py-1 border border-gray-300 rounded"
+                          {...register(`variations.${index}.stock`, {
+                            valueAsNumber: true,
+                          })}
+                        />
+                      </td>
+                      <td className="px-4 py-2 border border-gray-300">
+                        <button
+                          type="button"
+                          className="px-2 py-1 text-red-500 border border-red-500 rounded hover:bg-red-100"
+                          onClick={() => removeVariation(index)}
+                        >
+                          Remove
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <button
               type="button"
-              variant="outline"
+              className="mt-2 px-4 py-2 text-white bg-blue-500 rounded hover:bg-blue-600"
               onClick={() =>
                 addVariation({
                   id: Date.now().toString(),
@@ -367,48 +380,66 @@ export default function AddProductDialog({
               }
             >
               Add Variation
-            </Button>
+            </button>
           </div>
 
           <div className="grid gap-2">
             <Label>Attributes (Optional)</Label>
-            <Table className="table-fixed w-full">
-              <TableHead>
-                <TableRow>
-                  <TableCell className="w-1/3 font-bold">Key</TableCell>
-                  <TableCell className="w-1/3 font-bold">Value</TableCell>
-                  <TableCell className="w-1/3 font-bold">Actions</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {Object.entries(attributes).map(([key, value]) => (
-                  <TableRow key={key}>
-                    <TableCell className="w-1/3">
-                      <Input placeholder="Attribute Key" value={key} readOnly />
-                    </TableCell>
-                    <TableCell className="w-1/3">
-                      <Input
-                        placeholder="Attribute Value"
-                        value={value}
-                        onChange={(e) => updateAttribute(key, e.target.value)}
-                      />
-                    </TableCell>
-                    <TableCell className="w-1/3">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => removeAttribute(key)}
-                      >
-                        Remove
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-            <Button type="button" variant="outline" onClick={addAttribute}>
+            <div className="overflow-x-auto">
+              <table className="table-fixed w-full border-collapse border border-gray-300">
+                <thead>
+                  <tr className="bg-gray-100">
+                    <th className="w-1/3 px-4 py-2 text-left font-bold border border-gray-300">
+                      Key
+                    </th>
+                    <th className="w-1/3 px-4 py-2 text-left font-bold border border-gray-300">
+                      Value
+                    </th>
+                    <th className="w-1/3 px-4 py-2 text-left font-bold border border-gray-300">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {Object.entries(attributes).map(([key, value]) => (
+                    <tr key={key} className="hover:bg-gray-50">
+                      <td className="px-4 py-2 border border-gray-300">
+                        <input
+                          type="text"
+                          value={key}
+                          readOnly
+                          className="w-full px-2 py-1 border border-gray-300 rounded bg-gray-100"
+                        />
+                      </td>
+                      <td className="px-4 py-2 border border-gray-300">
+                        <input
+                          type="text"
+                          value={value}
+                          onChange={(e) => updateAttribute(key, e.target.value)}
+                          className="w-full px-2 py-1 border border-gray-300 rounded"
+                        />
+                      </td>
+                      <td className="px-4 py-2 border border-gray-300">
+                        <button
+                          type="button"
+                          className="px-2 py-1 text-red-500 border border-red-500 rounded hover:bg-red-100"
+                          onClick={() => removeAttribute(key)}
+                        >
+                          Remove
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <button
+              type="button"
+              className="mt-2 px-4 py-2 text-white bg-blue-500 rounded hover:bg-blue-600"
+              onClick={addAttribute}
+            >
               Add Attribute
-            </Button>
+            </button>
           </div>
 
           <Controller
