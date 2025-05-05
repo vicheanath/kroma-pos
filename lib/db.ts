@@ -63,6 +63,7 @@ export type ReceiptSettings = {
   storeEmail?: string;
   storeWebsite?: string;
   storeLogo?: string;
+  logoSize: number;
   showLogo: boolean;
   taxRate: number;
   showTax: boolean;
@@ -104,6 +105,7 @@ export const DEFAULT_RECEIPT_SETTINGS: ReceiptSettings = {
   storeEmail: "contact@mystore.com",
   storeWebsite: "www.mystore.com",
   showLogo: true,
+  logoSize: 100,
   taxRate: 10,
   showTax: true,
   currency: "USD",
@@ -511,6 +513,22 @@ export const salesApi = {
       return 0;
     }
   },
+  getRevenueByDateRange: async (
+    startDate: Date,
+    endDate: Date
+  ): Promise<number> => {
+    try {
+      const db = getDB();
+      const sales = await db.sales
+        .where("date")
+        .between(startDate, endDate, true, true)
+        .toArray();
+      return sales.reduce((sum, sale) => sum + sale.total, 0);
+    } catch (error) {
+      console.error("Error getting revenue by date range:", error);
+      return 0;
+    }
+  }
 };
 
 // Settings API with error handling

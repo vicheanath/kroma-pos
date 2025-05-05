@@ -257,7 +257,9 @@ export default function SettingsPage() {
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="outline" className="w-full">
-                          {theme.charAt(0).toUpperCase() + theme.slice(1)}
+                          {theme
+                            ? theme.charAt(0).toUpperCase() + theme.slice(1)
+                            : "Default"}
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent>
