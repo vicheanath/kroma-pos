@@ -8,7 +8,7 @@ import { useToast } from "@/components/ui/use-toast"
 import { Download, Upload, Loader2, FileArchive, FileText, ImageIcon, Database } from "lucide-react"
 import { Progress } from "@/components/ui/progress"
 import { exportAllData, importAllData } from "@/lib/data-portability"
-import { getReceiptSettings } from "@/lib/indexeddb"
+import { settingsApi } from "@/lib/db"
 import JSZip from "jszip"
 
 export function DataExportImport() {
@@ -41,7 +41,7 @@ export function DataExportImport() {
       // Get receipt settings to extract logo
       setProgress(50)
       setProgressText("Processing receipt settings...")
-      const receiptSettings = await getReceiptSettings()
+      const receiptSettings = await settingsApi.getReceiptSettings()
 
       // If there's a logo, extract and add it
       if (receiptSettings.storeLogo) {
