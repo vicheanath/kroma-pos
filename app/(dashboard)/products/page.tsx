@@ -58,6 +58,7 @@ import AddProductDialog from "@/components/AddProductDialog";
 import EditProductDialog from "@/components/EditProductDialog";
 import DeleteProductDialog from "@/components/DeleteProductDialog";
 
+
 export default function ProductsPage() {
   const {
     products,
@@ -73,16 +74,19 @@ export default function ProductsPage() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [currentProduct, setCurrentProduct] = useState<Product | null>(null);
-  const [newProduct, setNewProduct] = useState({
-    name: "",
-    price: "",
-    category: "",
-    categoryId: "",
-    stock: "",
-    barcode: "",
-    description: "",
-    image: "",
-  });
+
+
+  const handleAddProduct = (newProduct: Product) => {
+    addNewProduct(newProduct);
+    setIsAddDialogOpen(false);
+    setCurrentProduct(null);
+  };
+  const handleEditProduct = (updatedProduct: Product) => {
+    if (!currentProduct) return;
+    updateExistingProduct(updatedProduct);
+    setIsEditDialogOpen(false);
+    setCurrentProduct(null);
+  };
 
   // Filter and sort products
   const filteredProducts = products
@@ -111,53 +115,7 @@ export default function ProductsPage() {
       }
     });
 
-  // Handle adding a new product
-  const handleAddProduct = () => {
-    if (
-      !newProduct.name ||
-      !newProduct.price ||
-      !newProduct.categoryId ||
-      !newProduct.stock
-    ) {
-      return;
-    }
-
-    const selectedCategory = categories.find(
-      (c) => c.id === newProduct.categoryId
-    );
-
-    addNewProduct({
-      name: newProduct.name,
-      price: Number.parseFloat(newProduct.price),
-      category: selectedCategory ? selectedCategory.name : "Uncategorized",
-      categoryId: newProduct.categoryId,
-      stock: Number.parseInt(newProduct.stock),
-      barcode: newProduct.barcode || undefined,
-      description: newProduct.description || undefined,
-      image: newProduct.image || "",
-    });
-
-    setNewProduct({
-      name: "",
-      price: "",
-      category: "",
-      categoryId: "",
-      stock: "",
-      barcode: "",
-      description: "",
-      image: "",
-    });
-    setIsAddDialogOpen(false);
-  };
-
-  // Handle editing a product
-  const handleEditProduct = () => {
-    if (!currentProduct) return;
-
-    updateExistingProduct(currentProduct);
-    setIsEditDialogOpen(false);
-    setCurrentProduct(null);
-  };
+  
 
   // Handle deleting a product
   const handleDeleteProduct = () => {
@@ -181,18 +139,6 @@ export default function ProductsPage() {
       });
     }
   };
-
-  // Animation variants
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    show: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.05,
-      },
-    },
-  };
-
   const itemVariants = {
     hidden: { y: 20, opacity: 0 },
     show: { y: 0, opacity: 1 },
@@ -372,8 +318,6 @@ export default function ProductsPage() {
       <AddProductDialog
         isOpen={isAddDialogOpen}
         onOpenChange={setIsAddDialogOpen}
-        newProduct={newProduct}
-        setNewProduct={setNewProduct}
         categories={categories}
         handleAddProduct={handleAddProduct}
       />
