@@ -22,7 +22,7 @@ import {
 import { Download, Calendar, Printer } from "lucide-react"
 import { format, subDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from "date-fns"
 import { useToast } from "@/components/ui/use-toast"
-import { getTopSellingProducts, getRevenueByDateRange, getSalesByDateRange } from "@/lib/indexeddb"
+import { salesApi } from "@/lib/db"
 
 export default function ReportsPage() {
   const { sales, products, categories } = usePosData()
@@ -75,11 +75,11 @@ export default function ReportsPage() {
         }
 
         // Get sales for the date range
-        const salesInRange = await getSalesByDateRange(start, end)
+        const salesInRange = await salesApi.getByDateRange(start, end)
         setFilteredSales(salesInRange)
 
         // Get top selling products
-        const topProducts = await getTopSellingProducts(5)
+        const topProducts = await salesApi.getTopSellingProducts(5)
 
         // Map product IDs to names
         const topProductsWithNames = await Promise.all(
@@ -104,7 +104,7 @@ export default function ReportsPage() {
             const dayStart = new Date(date.setHours(0, 0, 0, 0))
             const dayEnd = new Date(date.setHours(23, 59, 59, 999))
 
-            const dayRevenue = await getRevenueByDateRange(dayStart, dayEnd)
+            const dayRevenue = await salesApi.getRevenueByDateRange(dayStart, dayEnd)
 
             revenueChartData.push({
               name: format(date, "EEE"),
@@ -120,7 +120,7 @@ export default function ReportsPage() {
             const dayStart = new Date(date.setHours(0, 0, 0, 0))
             const dayEnd = new Date(date.setHours(23, 59, 59, 999))
 
-            const dayRevenue = await getRevenueByDateRange(dayStart, dayEnd)
+            const dayRevenue = await await salesApi.getRevenueByDateRange(dayStart, dayEnd)
 
             revenueChartData.push({
               name: days[i],
@@ -140,7 +140,7 @@ export default function ReportsPage() {
               weekEnd.setTime(end.getTime())
             }
 
-            const weekRevenue = await getRevenueByDateRange(weekStart, weekEnd)
+            const weekRevenue = await salesApi.getRevenueByDateRange(weekStart, weekEnd)
 
             revenueChartData.push({
               name: `Week ${i + 1}`,
@@ -159,7 +159,7 @@ export default function ReportsPage() {
               const dayStart = new Date(date.setHours(0, 0, 0, 0))
               const dayEnd = new Date(date.setHours(23, 59, 59, 999))
 
-              const dayRevenue = await getRevenueByDateRange(dayStart, dayEnd)
+              const dayRevenue = await salesApi.getRevenueByDateRange(dayStart, dayEnd)
 
               revenueChartData.push({
                 name: format(date, "MM/dd"),
@@ -180,7 +180,7 @@ export default function ReportsPage() {
                 weekEnd.setTime(end.getTime())
               }
 
-              const weekRevenue = await getRevenueByDateRange(weekStart, weekEnd)
+              const weekRevenue = await salesApi.getRevenueByDateRange(weekStart, weekEnd)
 
               revenueChartData.push({
                 name: `Week ${i + 1}`,
