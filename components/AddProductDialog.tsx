@@ -108,7 +108,6 @@ export default function AddProductDialog({
     control,
     name: "variations",
   });
-  console.log("variationFields", errors);
 
   const [attributes, setAttributes] = useState<Record<string, string>>({});
 
@@ -130,7 +129,6 @@ export default function AddProductDialog({
 
   const onSubmit = (data: ProductFormValues) => {
     const finalData = { ...data, attributes };
-    console.log("Form Data:", finalData);
     handleAddProduct(finalData);
   };
 

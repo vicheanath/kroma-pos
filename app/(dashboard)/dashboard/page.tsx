@@ -240,7 +240,7 @@ export default function DashboardPage() {
                         </div>
                         <div>
                           <p className="text-sm font-medium">{product.name}</p>
-                          <p className="text-xs text-muted-foreground">{product.category}</p>
+                          <p className="text-xs text-muted-foreground">{product.category.name}</p>
                         </div>
                       </div>
                       <p className="font-medium">${product.price.toFixed(2)}</p>

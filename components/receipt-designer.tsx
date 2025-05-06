@@ -21,6 +21,8 @@ import { Slider } from "@/components/ui/slider";
 import { ImageUpload } from "@/components/image-upload";
 import { Loader2, Save, RefreshCw, Printer, Eye } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
+import Barcode from "react-barcode";
+import { ReceiptContent } from "@/components/receipt-content";
 
 export function ReceiptDesigner() {
   const { settings, isLoading, updateSettings } = useReceiptSettings();
@@ -53,6 +55,7 @@ export function ReceiptDesigner() {
     fontFamily: "Arial",
     thankYouMessage: "",
     returnPolicy: "",
+    showBarcode: true, // Add this field
   });
 
   // Update form data when settings change
@@ -81,6 +84,7 @@ export function ReceiptDesigner() {
         fontFamily: settings.fontFamily,
         thankYouMessage: settings.thankYouMessage || "",
         returnPolicy: settings.returnPolicy || "",
+        showBarcode: settings.showBarcode !== undefined ? settings.showBarcode : true, // Add this field
       });
     }
   }, [settings]);
@@ -181,7 +185,6 @@ export function ReceiptDesigner() {
             }
             .receipt-total {
               margin-top: 10px;
-              border-top: 1px dashed #000;
               padding-top: 5px;
             }
             .receipt-footer {
@@ -495,6 +498,17 @@ export function ReceiptDesigner() {
                     }
                   />
                 </div>
+
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="showBarcode">Show Barcode</Label>
+                  <Switch
+                    id="showBarcode"
+                    checked={formData.showBarcode}
+                    onCheckedChange={(checked) =>
+                      handleSwitchChange("showBarcode", checked)
+                    }
+                  />
+                </div>
               </TabsContent>
 
               <TabsContent value="footer" className="space-y-4">
@@ -568,144 +582,15 @@ export function ReceiptDesigner() {
               margin: previewMode ? "0 auto" : "",
             }}
           >
-            <div ref={receiptRef}>
-              <div className="receipt-header">
-                {formData.showLogo && formData.storeLogo && (
-                  <img
-                    src={formData.storeLogo || "/placeholder.svg"}
-                    alt="Store Logo"
-                    className="receipt-logo mb-2"
-                  />
-                )}
-                <h1
-                  className="text-center font-bold"
-                  style={{ fontSize: `${formData.fontSize + 4}px` }}
-                >
-                  {formData.storeName}
-                </h1>
-                {formData.headerText && (
-                  <p className="text-center">{formData.headerText}</p>
-                )}
-                {formData.storeAddress && (
-                  <p className="text-center text-sm">{formData.storeAddress}</p>
-                )}
-                {formData.storePhone && (
-                  <p className="text-center text-sm">
-                    Phone: {formData.storePhone}
-                  </p>
-                )}
-                {formData.storeEmail && (
-                  <p className="text-center text-sm">
-                    Email: {formData.storeEmail}
-                  </p>
-                )}
-                {formData.storeWebsite && (
-                  <p className="text-center text-sm">
-                    Web: {formData.storeWebsite}
-                  </p>
-                )}
-              </div>
-
-              <div className="receipt-info my-2 text-sm">
-                <div className="flex justify-between">
-                  <span>Date:</span>
-                  <span>{new Date().toLocaleDateString()}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Time:</span>
-                  <span>{new Date().toLocaleTimeString()}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Receipt #:</span>
-                  <span>INV-12345</span>
-                </div>
-              </div>
-
-              <div
-                className="my-2"
-                style={{
-                  borderTop: "1px dashed #000",
-                  borderBottom: "1px dashed #000",
-                }}
-              >
-                <table className="receipt-items w-full text-sm">
-                  <thead>
-                    <tr>
-                      <th className="text-left">Item</th>
-                      <th className="text-center">Qty</th>
-                      <th className="text-right">Price</th>
-                      <th className="text-right">Total</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {sampleItems.map((item, index) => (
-                      <tr key={index}>
-                        <td className="text-left">{item.name}</td>
-                        <td className="text-center">{item.quantity}</td>
-                        <td className="text-right">
-                          {formData.currencySymbol}
-                          {item.price.toFixed(2)}
-                        </td>
-                        <td className="text-right">
-                          {formData.currencySymbol}
-                          {(item.price * item.quantity).toFixed(2)}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-
-              <div className="receipt-total text-sm">
-                <div className="flex justify-between">
-                  <span>Subtotal:</span>
-                  <span>
-                    {formData.currencySymbol}
-                    {subtotal.toFixed(2)}
-                  </span>
-                </div>
-                {formData.showTax && (
-                  <div className="flex justify-between">
-                    <span>Tax ({formData.taxRate}%):</span>
-                    <span>
-                      {formData.currencySymbol}
-                      {tax.toFixed(2)}
-                    </span>
-                  </div>
-                )}
-                <div className="flex justify-between font-bold mt-1">
-                  <span>Total:</span>
-                  <span>
-                    {formData.currencySymbol}
-                    {total.toFixed(2)}
-                  </span>
-                </div>
-              </div>
-
-              <div className="receipt-payment text-sm mt-4">
-                <div className="flex justify-between">
-                  <span>Payment Method:</span>
-                  <span>Credit Card</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Amount Paid:</span>
-                  <span>
-                    {formData.currencySymbol}
-                    {total.toFixed(2)}
-                  </span>
-                </div>
-              </div>
-
-              <div className="receipt-footer mt-4 text-center text-sm">
-                {formData.thankYouMessage && <p>{formData.thankYouMessage}</p>}
-                {formData.returnPolicy && (
-                  <p className="text-xs mt-1">{formData.returnPolicy}</p>
-                )}
-                {formData.footerText && (
-                  <p className="text-xs mt-2">{formData.footerText}</p>
-                )}
-              </div>
-            </div>
+            <ReceiptContent
+              ref={receiptRef}
+              data={formData}
+              receiptId={`INV-${Math.floor(Math.random() * 100000)}-${new Date().getTime()}`}
+              item={sampleItems}
+              subtotal={subtotal}
+              tax={tax}
+              total={total}
+            />
           </div>
         </div>
       </div>

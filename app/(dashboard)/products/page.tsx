@@ -13,14 +13,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-  DialogDescription,
-} from "@/components/ui/dialog";
-import {
   Select,
   SelectContent,
   SelectItem,
@@ -41,8 +33,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Search,
   Plus,
@@ -53,7 +43,6 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { ImageUpload } from "@/components/image-upload";
 import AddProductDialog from "@/components/AddProductDialog";
 import EditProductDialog from "@/components/EditProductDialog";
 import DeleteProductDialog from "@/components/DeleteProductDialog";
@@ -111,7 +100,7 @@ export default function ProductsPage() {
       } else if (sortBy === "stock") {
         return a.stock - b.stock;
       } else {
-        return a.category.localeCompare(b.category);
+        return a.category.name.localeCompare(b.category.name);
       }
     });
 
@@ -135,7 +124,7 @@ export default function ProductsPage() {
       setCurrentProduct({
         ...currentProduct,
         categoryId,
-        category: selectedCategory.name,
+        category: selectedCategory,
       });
     }
   };
@@ -143,7 +132,6 @@ export default function ProductsPage() {
     hidden: { y: 20, opacity: 0 },
     show: { y: 0, opacity: 1 },
   };
-
   return (
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row gap-4 justify-between">
@@ -250,7 +238,7 @@ export default function ProductsPage() {
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell>{product.category}</TableCell>
+                    <TableCell>{product.category.name}</TableCell>
                     <TableCell>${product.price.toFixed(2)}</TableCell>
                     <TableCell>
                       <span

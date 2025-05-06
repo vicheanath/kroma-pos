@@ -1,34 +1,56 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { useDiscount, type Discount, type DiscountType } from "@/components/discount-provider"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Switch } from "@/components/ui/switch"
-import { Badge } from "@/components/ui/badge"
-import { Percent, DollarSign, Plus, Edit, Trash2 } from "lucide-react"
-
+import { useState } from "react";
+import { useDiscount } from "@/components/discount-provider";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
+import { Percent, DollarSign, Plus, Edit, Trash2 } from "lucide-react";
+import { type Discount, type DiscountType } from "@/lib/db";
 export default function DiscountsPage() {
-  const { discounts, addDiscount, updateDiscount, removeDiscount } = useDiscount()
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
-  const [currentDiscount, setCurrentDiscount] = useState<Discount | null>(null)
-  const [newDiscount, setNewDiscount] = useState<Omit<Discount, "id" | "usageCount">>({
+  const { discounts, addDiscount, updateDiscount, removeDiscount } =
+    useDiscount();
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [currentDiscount, setCurrentDiscount] = useState<Discount | null>(null);
+  const [newDiscount, setNewDiscount] = useState<
+    Omit<Discount, "id" | "usageCount">
+  >({
     name: "",
     code: "",
     type: "percentage",
     value: 0,
     isActive: true,
     appliesTo: "all",
-  })
+  });
 
   const handleAddDiscount = () => {
-    addDiscount(newDiscount)
+    addDiscount(newDiscount);
     setNewDiscount({
       name: "",
       code: "",
@@ -36,31 +58,35 @@ export default function DiscountsPage() {
       value: 0,
       isActive: true,
       appliesTo: "all",
-    })
-    setIsAddDialogOpen(false)
-  }
+    });
+    setIsAddDialogOpen(false);
+  };
 
   const handleEditDiscount = () => {
-    if (!currentDiscount) return
-    updateDiscount(currentDiscount)
-    setIsEditDialogOpen(false)
-    setCurrentDiscount(null)
-  }
+    if (!currentDiscount) return;
+    updateDiscount(currentDiscount);
+    setIsEditDialogOpen(false);
+    setCurrentDiscount(null);
+  };
 
   const handleRemoveDiscount = (id: string) => {
-    removeDiscount(id)
-  }
+    removeDiscount(id);
+  };
 
   const formatDiscountValue = (discount: Discount) => {
-    return discount.type === "percentage" ? `${discount.value}%` : `$${discount.value.toFixed(2)}`
-  }
+    return discount.type === "percentage"
+      ? `${discount.value}%`
+      : `$${discount.value.toFixed(2)}`;
+  };
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Discounts</h1>
-          <p className="text-muted-foreground">Manage discounts and promotions for your store</p>
+          <p className="text-muted-foreground">
+            Manage discounts and promotions for your store
+          </p>
         </div>
         <Button onClick={() => setIsAddDialogOpen(true)}>
           <Plus className="mr-2 h-4 w-4" />
@@ -88,7 +114,9 @@ export default function DiscountsPage() {
               {discounts.length > 0 ? (
                 discounts.map((discount) => (
                   <TableRow key={discount.id}>
-                    <TableCell className="font-medium">{discount.name}</TableCell>
+                    <TableCell className="font-medium">
+                      {discount.name}
+                    </TableCell>
                     <TableCell>{discount.code || "-"}</TableCell>
                     <TableCell>
                       <div className="flex items-center">
@@ -105,14 +133,16 @@ export default function DiscountsPage() {
                         {discount.appliesTo === "all"
                           ? "All Products"
                           : discount.appliesTo === "cart"
-                            ? "Cart Total"
-                            : discount.appliesTo === "category"
-                              ? "Categories"
-                              : "Specific Products"}
+                          ? "Cart Total"
+                          : discount.appliesTo === "category"
+                          ? "Categories"
+                          : "Specific Products"}
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <Badge variant={discount.isActive ? "default" : "secondary"}>
+                      <Badge
+                        variant={discount.isActive ? "default" : "secondary"}
+                      >
                         {discount.isActive ? "Active" : "Inactive"}
                       </Badge>
                     </TableCell>
@@ -122,8 +152,8 @@ export default function DiscountsPage() {
                           variant="ghost"
                           size="icon"
                           onClick={() => {
-                            setCurrentDiscount(discount)
-                            setIsEditDialogOpen(true)
+                            setCurrentDiscount(discount);
+                            setIsEditDialogOpen(true);
                           }}
                         >
                           <Edit className="h-4 w-4" />
@@ -164,7 +194,9 @@ export default function DiscountsPage() {
               <Input
                 id="name"
                 value={newDiscount.name}
-                onChange={(e) => setNewDiscount({ ...newDiscount, name: e.target.value })}
+                onChange={(e) =>
+                  setNewDiscount({ ...newDiscount, name: e.target.value })
+                }
                 placeholder="Summer Sale"
               />
             </div>
@@ -174,7 +206,9 @@ export default function DiscountsPage() {
               <Input
                 id="code"
                 value={newDiscount.code || ""}
-                onChange={(e) => setNewDiscount({ ...newDiscount, code: e.target.value })}
+                onChange={(e) =>
+                  setNewDiscount({ ...newDiscount, code: e.target.value })
+                }
                 placeholder="SUMMER25"
               />
             </div>
@@ -184,7 +218,9 @@ export default function DiscountsPage() {
                 <Label htmlFor="type">Discount Type</Label>
                 <Select
                   value={newDiscount.type}
-                  onValueChange={(value: DiscountType) => setNewDiscount({ ...newDiscount, type: value })}
+                  onValueChange={(value: DiscountType) =>
+                    setNewDiscount({ ...newDiscount, type: value })
+                  }
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select type" />
@@ -197,7 +233,11 @@ export default function DiscountsPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="value">{newDiscount.type === "percentage" ? "Percentage Value" : "Fixed Amount"}</Label>
+                <Label htmlFor="value">
+                  {newDiscount.type === "percentage"
+                    ? "Percentage Value"
+                    : "Fixed Amount"}
+                </Label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
                     {newDiscount.type === "percentage" ? (
@@ -210,9 +250,16 @@ export default function DiscountsPage() {
                     id="value"
                     type="number"
                     value={newDiscount.value || ""}
-                    onChange={(e) => setNewDiscount({ ...newDiscount, value: Number.parseFloat(e.target.value) || 0 })}
+                    onChange={(e) =>
+                      setNewDiscount({
+                        ...newDiscount,
+                        value: Number.parseFloat(e.target.value) || 0,
+                      })
+                    }
                     className="pl-9"
-                    placeholder={newDiscount.type === "percentage" ? "25" : "10.00"}
+                    placeholder={
+                      newDiscount.type === "percentage" ? "25" : "10.00"
+                    }
                   />
                 </div>
               </div>
@@ -222,9 +269,9 @@ export default function DiscountsPage() {
               <Label htmlFor="appliesTo">Applies To</Label>
               <Select
                 value={newDiscount.appliesTo}
-                onValueChange={(value: "all" | "category" | "product" | "cart") =>
-                  setNewDiscount({ ...newDiscount, appliesTo: value })
-                }
+                onValueChange={(
+                  value: "all" | "category" | "product" | "cart"
+                ) => setNewDiscount({ ...newDiscount, appliesTo: value })}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select where discount applies" />
@@ -244,7 +291,9 @@ export default function DiscountsPage() {
                 <Switch
                   id="isActive"
                   checked={newDiscount.isActive}
-                  onCheckedChange={(checked) => setNewDiscount({ ...newDiscount, isActive: checked })}
+                  onCheckedChange={(checked) =>
+                    setNewDiscount({ ...newDiscount, isActive: checked })
+                  }
                 />
               </div>
             </div>
@@ -271,7 +320,12 @@ export default function DiscountsPage() {
                 <Input
                   id="edit-name"
                   value={currentDiscount.name}
-                  onChange={(e) => setCurrentDiscount({ ...currentDiscount, name: e.target.value })}
+                  onChange={(e) =>
+                    setCurrentDiscount({
+                      ...currentDiscount,
+                      name: e.target.value,
+                    })
+                  }
                 />
               </div>
 
@@ -280,7 +334,12 @@ export default function DiscountsPage() {
                 <Input
                   id="edit-code"
                   value={currentDiscount.code || ""}
-                  onChange={(e) => setCurrentDiscount({ ...currentDiscount, code: e.target.value })}
+                  onChange={(e) =>
+                    setCurrentDiscount({
+                      ...currentDiscount,
+                      code: e.target.value,
+                    })
+                  }
                 />
               </div>
 
@@ -290,7 +349,10 @@ export default function DiscountsPage() {
                   <Select
                     value={currentDiscount.type}
                     onValueChange={(value: DiscountType) =>
-                      setCurrentDiscount({ ...currentDiscount, type: value as DiscountType })
+                      setCurrentDiscount({
+                        ...currentDiscount,
+                        type: value as DiscountType,
+                      })
                     }
                   >
                     <SelectTrigger>
@@ -305,7 +367,9 @@ export default function DiscountsPage() {
 
                 <div className="space-y-2">
                   <Label htmlFor="edit-value">
-                    {currentDiscount.type === "percentage" ? "Percentage Value" : "Fixed Amount"}
+                    {currentDiscount.type === "percentage"
+                      ? "Percentage Value"
+                      : "Fixed Amount"}
                   </Label>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
@@ -320,7 +384,10 @@ export default function DiscountsPage() {
                       type="number"
                       value={currentDiscount.value}
                       onChange={(e) =>
-                        setCurrentDiscount({ ...currentDiscount, value: Number.parseFloat(e.target.value) || 0 })
+                        setCurrentDiscount({
+                          ...currentDiscount,
+                          value: Number.parseFloat(e.target.value) || 0,
+                        })
                       }
                       className="pl-9"
                     />
@@ -332,7 +399,9 @@ export default function DiscountsPage() {
                 <Label htmlFor="edit-appliesTo">Applies To</Label>
                 <Select
                   value={currentDiscount.appliesTo}
-                  onValueChange={(value: "all" | "category" | "product" | "cart") =>
+                  onValueChange={(
+                    value: "all" | "category" | "product" | "cart"
+                  ) =>
                     setCurrentDiscount({ ...currentDiscount, appliesTo: value })
                   }
                 >
@@ -342,7 +411,9 @@ export default function DiscountsPage() {
                   <SelectContent>
                     <SelectItem value="all">All Products</SelectItem>
                     <SelectItem value="cart">Cart Total</SelectItem>
-                    <SelectItem value="category">Specific Categories</SelectItem>
+                    <SelectItem value="category">
+                      Specific Categories
+                    </SelectItem>
                     <SelectItem value="product">Specific Products</SelectItem>
                   </SelectContent>
                 </Select>
@@ -354,7 +425,12 @@ export default function DiscountsPage() {
                   <Switch
                     id="edit-isActive"
                     checked={currentDiscount.isActive}
-                    onCheckedChange={(checked) => setCurrentDiscount({ ...currentDiscount, isActive: checked })}
+                    onCheckedChange={(checked) =>
+                      setCurrentDiscount({
+                        ...currentDiscount,
+                        isActive: checked,
+                      })
+                    }
                   />
                 </div>
               </div>
@@ -362,13 +438,17 @@ export default function DiscountsPage() {
               <div className="pt-2 border-t">
                 <p className="text-xs text-muted-foreground">
                   Usage Count: {currentDiscount.usageCount}
-                  {currentDiscount.usageLimit && ` / ${currentDiscount.usageLimit}`}
+                  {currentDiscount.usageLimit &&
+                    ` / ${currentDiscount.usageLimit}`}
                 </p>
               </div>
             </div>
           )}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setIsEditDialogOpen(false)}
+            >
               Cancel
             </Button>
             <Button onClick={handleEditDiscount}>Save Changes</Button>
@@ -376,5 +456,5 @@ export default function DiscountsPage() {
         </DialogContent>
       </Dialog>
     </div>
-  )
+  );
 }
