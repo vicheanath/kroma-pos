@@ -16,6 +16,8 @@ import {
   Settings,
   Menu,
   X,
+  QrCode,
+  Barcode,
 } from "lucide-react";
 
 const navItems = [
@@ -24,6 +26,8 @@ const navItems = [
   { href: "/products", label: "Products", icon: Package },
   { href: "/categories", label: "Categories", icon: LayoutGrid },
   { href: "/discounts", label: "Discounts", icon: Percent },
+  { href: "/barcode-designer", label: "Barcode Designer", icon: Barcode },
+  { href: "/barcode-generator", label: "Barcode Generator", icon: QrCode },
   { href: "/receipt-designer", label: "Receipt Designer", icon: Receipt },
   { href: "/reports", label: "Reports", icon: BarChart3 },
   { href: "/data-export", label: "Data Export", icon: ClipboardList },
