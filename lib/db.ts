@@ -5,7 +5,7 @@ export type Product = {
   id: string;
   name: string;
   price: number;
-  category: string;
+  category: Category;
   categoryId: string;
   image: string;
   stock: number;
@@ -80,6 +80,27 @@ export type ReceiptSettings = {
   thankYouMessage?: string;
   returnPolicy?: string;
   receiptTemplate?: string;
+  showBarcode: boolean;
+};
+
+export type DiscountType = "percentage" | "fixed";
+
+export type Discount = {
+  id: string;
+  name: string;
+  code?: string;
+  type: DiscountType;
+  value: number; // Percentage or fixed amount
+  minOrderAmount?: number;
+  maxDiscount?: number;
+  startDate?: Date;
+  endDate?: Date;
+  isActive: boolean;
+  appliesTo: "all" | "category" | "product" | "cart";
+  categoryIds?: string[];
+  productIds?: string[];
+  usageLimit?: number;
+  usageCount: number;
 };
 
 export type AppSettings = {
@@ -120,6 +141,7 @@ export const DEFAULT_RECEIPT_SETTINGS: ReceiptSettings = {
   fontFamily: "Arial",
   thankYouMessage: "Thank you for shopping with us!",
   returnPolicy: "Returns accepted within 30 days with receipt.",
+  showBarcode: true,
 };
 
 export const DEFAULT_APP_SETTINGS: AppSettings = {
@@ -142,6 +164,7 @@ class PosDatabase extends Dexie {
   categories!: Dexie.Table<Category, string>;
   sales!: Dexie.Table<Sale, string>;
   settings!: Dexie.Table<AppSettings | ReceiptSettings, string>;
+  discounts!: Dexie.Table<Discount, string>; // Added discounts table property
 
   constructor() {
     super("pos_system_db");
@@ -153,6 +176,9 @@ class PosDatabase extends Dexie {
       categories: "id, name, description, color, icon",
       sales:
         "id, items, total, subtotal, tax, discount, discountType, paymentMethod, date, customerName, customerEmail, customerPhone, notes, receiptNumber",
+      // Added schema for discounts table
+      discounts:
+        "id, name, code, type, value, minOrderAmount, maxDiscount, startDate, endDate, isActive, appliesTo, categoryIds, productIds, usageLimit, usageCount",
       settings: "id",
     });
 
@@ -161,6 +187,7 @@ class PosDatabase extends Dexie {
     this.categories = this.table("categories");
     this.sales = this.table("sales");
     this.settings = this.table("settings");
+    this.discounts = this.table("discounts"); // Mapped discounts table
   }
 
   // Initialize with default settings if needed
@@ -298,12 +325,32 @@ function getDB(): PosDatabase {
 
 // Products API with error handling
 export const productsApi = {
-  getAll: async (): Promise<Product[]> => {
+  getAll: async (
+    page: number = 1,
+    pageSize: number = 10
+  ): Promise<Product[]> => {
     try {
       const db = getDB();
-      return await db.products.toArray();
+      const offset = (page - 1) * pageSize;
+
+      const products = await db.products
+        .offset(offset)
+        .limit(pageSize)
+        .toArray();
+
+      const productsWithCategory = await Promise.all(
+        products.map(async (product) => {
+          const category = await db.categories.get(product.categoryId);
+          return category ? { ...product, category } : product;
+        })
+      );
+
+      return productsWithCategory as Product[];
     } catch (error) {
-      console.error("Error getting products:", error);
+      console.error(
+        "Error getting products with pagination and category:",
+        error
+      );
       return [];
     }
   },
@@ -425,6 +472,140 @@ export const categoriesApi = {
   },
 };
 
+// Discounts API with error handling
+export const discountsApi = {
+  getAll: async (
+    page: number = 1,
+    pageSize: number = 10
+  ): Promise<Discount[]> => {
+    try {
+      const db = getDB();
+      const offset = (page - 1) * pageSize;
+      return await db.discounts.offset(offset).limit(pageSize).toArray();
+    } catch (error) {
+      console.error("Error fetching discounts:", error);
+      return [];
+    }
+  },
+  getById: async (id: string): Promise<Discount | undefined> => {
+    try {
+      const db = getDB();
+      return await db.discounts.get(id);
+    } catch (error) {
+      console.error(`Error fetching discount by ID (${id}):`, error);
+      return undefined;
+    }
+  },
+  add: async (discount: Discount): Promise<string> => {
+    try {
+      const db = getDB();
+      await db.discounts.add(discount);
+      return discount.id;
+    } catch (error) {
+      console.error("Error adding discount:", error);
+      throw error;
+    }
+  },
+  update: async (discount: Discount): Promise<void> => {
+    try {
+      const db = getDB();
+      await db.discounts.update(discount.id, discount);
+    } catch (error) {
+      console.error(`Error updating discount (${discount.id}):`, error);
+      throw error;
+    }
+  },
+  delete: async (id: string): Promise<void> => {
+    try {
+      const db = getDB();
+      await db.discounts.delete(id);
+    } catch (error) {
+      console.error(`Error deleting discount (${id}):`, error);
+      throw error;
+    }
+  },
+  getByProduct: async (productId: string): Promise<Discount[]> => {
+    try {
+      const db = getDB();
+      return await db.discounts
+        .where("applicableProducts")
+        .equals(productId)
+        .toArray();
+    } catch (error) {
+      console.error(
+        `Error fetching discounts for product (${productId}):`,
+        error
+      );
+      return [];
+    }
+  },
+  getByCategory: async (categoryId: string): Promise<Discount[]> => {
+    try {
+      const db = getDB();
+      return await db.discounts
+        .where("applicableCategories")
+        .equals(categoryId)
+        .toArray();
+    } catch (error) {
+      console.error(
+        `Error fetching discounts for category (${categoryId}):`,
+        error
+      );
+      return [];
+    }
+  },
+  getActiveDiscounts: async (): Promise<Discount[]> => {
+    try {
+      const db = getDB();
+      const now = new Date();
+      return await db.discounts
+        .filter((discount) => {
+          const startDate = discount.startDate
+            ? new Date(discount.startDate)
+            : null;
+          const endDate = discount.endDate ? new Date(discount.endDate) : null;
+          return (
+            (!startDate || now >= startDate) && (!endDate || now <= endDate)
+          );
+        })
+        .toArray();
+    } catch (error) {
+      console.error("Error fetching active discounts:", error);
+      return [];
+    }
+  },
+  getActiveDiscountsByProduct: async (
+    productId: string
+  ): Promise<Discount[]> => {
+    try {
+      const db = getDB();
+      const now = new Date();
+      return await db.discounts
+        .filter((discount) => {
+          const startDate = discount.startDate
+            ? new Date(discount.startDate)
+            : null;
+          const endDate = discount.endDate ? new Date(discount.endDate) : null;
+          const isApplicable =
+            !discount.applicableProducts ||
+            discount.applicableProducts.includes(productId);
+          return (
+            (!startDate || now >= startDate) &&
+            (!endDate || now <= endDate) &&
+            isApplicable
+          );
+        })
+        .toArray();
+    } catch (error) {
+      console.error(
+        `Error fetching active discounts for product (${productId}):`,
+        error
+      );
+      return [];
+    }
+  },
+};
+
 // Sales API with error handling
 export const salesApi = {
   getAll: async (): Promise<Sale[]> => {
@@ -528,7 +709,7 @@ export const salesApi = {
       console.error("Error getting revenue by date range:", error);
       return 0;
     }
-  }
+  },
 };
 
 // Settings API with error handling

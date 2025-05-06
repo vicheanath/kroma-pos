@@ -1,29 +1,11 @@
 "use client"
 
 import type React from "react"
-
 import { createContext, useContext, useState, useEffect } from "react"
 import { useToast } from "@/components/ui/use-toast"
+import { Discount, discountsApi } from "@/lib/db" // Import discounts API
 
-export type DiscountType = "percentage" | "fixed"
 
-export type Discount = {
-  id: string
-  name: string
-  code?: string
-  type: DiscountType
-  value: number // Percentage or fixed amount
-  minOrderAmount?: number
-  maxDiscount?: number
-  startDate?: Date
-  endDate?: Date
-  isActive: boolean
-  appliesTo: "all" | "category" | "product" | "cart"
-  categoryIds?: string[]
-  productIds?: string[]
-  usageLimit?: number
-  usageCount: number
-}
 
 type DiscountContextType = {
   discounts: Discount[]
@@ -61,94 +43,69 @@ const DiscountContext = createContext<DiscountContextType>({
   validateDiscountCode: () => null,
 })
 
-// Default discounts
-const DEFAULT_DISCOUNTS: Discount[] = [
-  {
-    id: "summer-sale",
-    name: "Summer Sale",
-    code: "SUMMER25",
-    type: "percentage",
-    value: 25,
-    minOrderAmount: 50,
-    maxDiscount: 100,
-    isActive: true,
-    appliesTo: "all",
-    usageCount: 0,
-  },
-  {
-    id: "new-customer",
-    name: "New Customer",
-    code: "WELCOME10",
-    type: "percentage",
-    value: 10,
-    isActive: true,
-    appliesTo: "cart",
-    usageCount: 0,
-  },
-  {
-    id: "clearance",
-    name: "Clearance Items",
-    type: "percentage",
-    value: 50,
-    isActive: true,
-    appliesTo: "category",
-    categoryIds: ["clearance"],
-    usageCount: 0,
-  },
-]
-
 export function DiscountProvider({
   children,
 }: {
   children: React.ReactNode
 }) {
-  const [discounts, setDiscounts] = useState<Discount[]>(DEFAULT_DISCOUNTS)
+  const [discounts, setDiscounts] = useState<Discount[]>([])
   const { toast } = useToast()
 
-  // Load discounts from localStorage on mount
+  // Load discounts from the database on mount
   useEffect(() => {
-    const savedDiscounts = localStorage.getItem("discounts")
-    if (savedDiscounts) {
+    const fetchDiscounts = async () => {
       try {
-        setDiscounts(JSON.parse(savedDiscounts))
-      } catch (e) {
-        console.error("Failed to parse saved discounts", e)
+        const dbDiscounts = await discountsApi.getAll()
+        setDiscounts(dbDiscounts)
+      } catch (error) {
+        console.error("Failed to fetch discounts from database", error)
       }
     }
+    fetchDiscounts()
   }, [])
 
-  // Save discounts to localStorage when they change
-  useEffect(() => {
-    localStorage.setItem("discounts", JSON.stringify(discounts))
-  }, [discounts])
-
-  const addDiscount = (discount: Omit<Discount, "id" | "usageCount">) => {
-    const newDiscount: Discount = {
-      ...discount,
-      id: crypto.randomUUID(),
-      usageCount: 0,
+  const addDiscount = async (discount: Omit<Discount, "id" | "usageCount">) => {
+    try {
+      const newDiscount: Discount = {
+        ...discount,
+        id: crypto.randomUUID(),
+        usageCount: 0,
+      }
+      await discountsApi.add(newDiscount)
+      setDiscounts((prev) => [...prev, newDiscount])
+      toast({
+        title: "Discount Added",
+        description: `${discount.name} has been added.`,
+      })
+    } catch (error) {
+      console.error("Failed to add discount", error)
     }
-    setDiscounts((prev) => [...prev, newDiscount])
-    toast({
-      title: "Discount Added",
-      description: `${discount.name} has been added.`,
-    })
   }
 
-  const updateDiscount = (discount: Discount) => {
-    setDiscounts((prev) => prev.map((d) => (d.id === discount.id ? discount : d)))
-    toast({
-      title: "Discount Updated",
-      description: `${discount.name} has been updated.`,
-    })
+  const updateDiscount = async (discount: Discount) => {
+    try {
+      await discountsApi.update(discount)
+      setDiscounts((prev) => prev.map((d) => (d.id === discount.id ? discount : d)))
+      toast({
+        title: "Discount Updated",
+        description: `${discount.name} has been updated.`,
+      })
+    } catch (error) {
+      console.error("Failed to update discount", error)
+    }
   }
 
-  const removeDiscount = (discountId: string) => {
-    setDiscounts((prev) => prev.filter((d) => d.id !== discountId))
-    toast({
-      title: "Discount Removed",
-      description: "The discount has been removed.",
-    })
+  const removeDiscount = async (discountId: string) => {
+    try {
+      await discountsApi.delete(discountId)
+      setDiscounts((prev) => prev.filter((d) => d.id !== discountId))
+      toast({
+        title: "Discount Removed",
+        description: "The discount has been removed.",
+      })
+    } catch (error) {
+      console.error("Failed to remove discount", error)
+    }
   }
 
   const isDiscountValid = (discount: Discount, subtotal = 0): boolean => {

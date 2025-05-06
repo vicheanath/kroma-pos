@@ -86,7 +86,7 @@ export default function SalesPage() {
       filtered = filtered.filter(
         (product) =>
           product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          product.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          product.category.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
           (product.barcode && product.barcode.includes(searchQuery)) ||
           (product.sku &&
             product.sku.toLowerCase().includes(searchQuery.toLowerCase())) ||
@@ -503,7 +503,7 @@ export default function SalesPage() {
                             {product.name}
                           </h3>
                           <p className="text-xs text-muted-foreground mb-1">
-                            {product.category}
+                            {product.category.name}
                           </p>
                           {product.sku && (
                             <p className="text-xs text-muted-foreground">
@@ -600,7 +600,7 @@ export default function SalesPage() {
                               {product.name}
                             </h3>
                             <p className="text-xs text-muted-foreground mb-1">
-                              {product.category}
+                              {product.category.name}
                             </p>
                             {product.sku && (
                               <p className="text-xs text-muted-foreground">
@@ -691,7 +691,7 @@ export default function SalesPage() {
                               {product.name}
                             </h3>
                             <p className="text-xs text-muted-foreground mb-1">
-                              {product.category}
+                              {product.category.name}
                             </p>
                             {product.sku && (
                               <p className="text-xs text-muted-foreground">
