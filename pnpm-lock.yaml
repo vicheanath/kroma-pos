@@ -119,6 +119,9 @@ dependencies:
   input-otp:
     specifier: 1.4.1
     version: 1.4.1(react-dom@19.1.0)(react@19.1.0)
+  jsbarcode:
+    specifier: ^3.11.6
+    version: 3.11.6
   jszip:
     specifier: latest
     version: 3.10.1
