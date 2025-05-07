@@ -47,11 +47,9 @@
 git clone https://github.com/yourusername/kromapos.git
 cd kromapos
 npm install
-
+```
 
 # Screenshots
-
-# show screenshots of the 
 
 ![KromaPOS BarCode Generator](./docs/barcode-generator.png)
 ![KromaPOS Barcode](./docs/barcode.png)
