@@ -1,51 +1,96 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
 
-import { useState, useRef } from "react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Upload, X, ImageIcon } from "lucide-react"
-import { fileToBase64 } from "@/lib/db"
-
+import { useState, useRef } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Upload, X, ImageIcon } from "lucide-react";
+import { fileToBase64 } from "@/lib/db";
 
 interface ImageUploadProps {
-  value: string
-  onChange: (value: string) => void
-  label?: string
+  value: string;
+  onChange: (value: string) => void;
+  label?: string;
 }
 
-export function ImageUpload({ value, onChange, label = "Product Image" }: ImageUploadProps) {
-  const [isUploading, setIsUploading] = useState(false)
-  const fileInputRef = useRef<HTMLInputElement>(null)
+export function ImageUpload({
+  value,
+  onChange,
+  label = "Product Image",
+}: ImageUploadProps) {
+  const [isUploading, setIsUploading] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
+  const handleFileChange = async (
+    e: React.ChangeEvent<HTMLInputElement> | File
+  ) => {
+    const file = e instanceof File ? e : e.target.files?.[0];
+    if (!file) return;
 
     try {
-      setIsUploading(true)
-      const base64 = await fileToBase64(file)
-      onChange(base64)
+      setIsUploading(true);
+      const base64 = await fileToBase64(file);
+      onChange(base64);
     } catch (error) {
-      console.error("Error converting file to base64:", error)
+      console.error("Error converting file to base64:", error);
     } finally {
-      setIsUploading(false)
+      setIsUploading(false);
     }
-  }
+  };
 
   const handleRemoveImage = () => {
-    onChange("")
+    onChange("");
     if (fileInputRef.current) {
-      fileInputRef.current.value = ""
+      fileInputRef.current.value = "";
     }
-  }
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = () => {
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(false);
+
+    const items = e.dataTransfer.items;
+    if (items && items.length > 0) {
+      const fileItem = Array.from(items).find(
+        (item) => item.kind === "file" && item.type.startsWith("image/")
+      );
+      if (fileItem) {
+        const file = fileItem.getAsFile();
+        if (file) {
+          handleFileChange(file); // Automatically upload the dropped file
+        }
+      }
+    } else {
+      const file = e.dataTransfer.files?.[0];
+      if (file) {
+        handleFileChange(file); // Fallback for older browsers
+      }
+    }
+  };
 
   return (
     <div className="space-y-2">
       <Label htmlFor="image-upload">{label}</Label>
-      <div className="flex flex-col items-center gap-4">
+      <div
+        className={`flex flex-col items-center gap-4 ${
+          isDragging ? "border-blue-500 bg-blue-100" : ""
+        }`}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+      >
         {value ? (
           <div className="relative w-full max-w-[200px] aspect-square">
             <img
@@ -64,9 +109,15 @@ export function ImageUpload({ value, onChange, label = "Product Image" }: ImageU
             </Button>
           </div>
         ) : (
-          <div className="flex flex-col items-center justify-center w-full max-w-[200px] aspect-square border border-dashed rounded-md bg-muted/50">
+          <div
+            className={`flex flex-col items-center justify-center w-full max-w-[200px] aspect-square border border-dashed rounded-md bg-muted/50 ${
+              isDragging ? "border-blue-500 bg-blue-100" : ""
+            }`}
+          >
             <ImageIcon className="h-10 w-10 text-muted-foreground mb-2" />
-            <p className="text-sm text-muted-foreground">No image uploaded</p>
+            <p className="text-sm text-muted-foreground">
+              {isDragging ? "Drop the image here" : "No image uploaded"}
+            </p>
           </div>
         )}
 
@@ -98,5 +149,5 @@ export function ImageUpload({ value, onChange, label = "Product Image" }: ImageU
         </div>
       </div>
     </div>
-  )
+  );
 }

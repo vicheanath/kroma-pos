@@ -587,8 +587,7 @@ export const discountsApi = {
             : null;
           const endDate = discount.endDate ? new Date(discount.endDate) : null;
           const isApplicable =
-            !discount.applicableProducts ||
-            discount.applicableProducts.includes(productId);
+            !discount.productIds || discount.productIds.includes(productId);
           return (
             (!startDate || now >= startDate) &&
             (!endDate || now <= endDate) &&

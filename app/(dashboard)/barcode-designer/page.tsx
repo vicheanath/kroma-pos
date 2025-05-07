@@ -247,7 +247,14 @@ export default function BarcodeGeneratorPage() {
   useEffect(() => {
     if (barcodeValue && barcodeRef.current) {
       try {
-        JsBarcode(barcodeRef.current, barcodeValue, {
+        const svgElement = barcodeRef.current.querySelector("svg");
+        if (svgElement) {
+          svgElement.remove(); // Remove existing SVG to avoid duplication
+        }
+        const newSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+        barcodeRef.current.appendChild(newSvg);
+
+        JsBarcode(newSvg, barcodeValue, {
           format: barcodeType,
           width,
           height,
@@ -255,14 +262,14 @@ export default function BarcodeGeneratorPage() {
           displayValue: showText,
           background: backgroundColor,
           lineColor,
-        })
+        });
       } catch (error) {
-        console.error("Error rendering barcode:", error)
+        console.error("Error rendering barcode:", error);
         toast({
           title: "Render Error",
           description: "Failed to render the barcode. Please check your settings.",
           variant: "destructive",
-        })
+        });
       }
     }
   }, [barcodeValue, barcodeType, width, height, fontSize, showText, backgroundColor, lineColor])
@@ -462,7 +469,7 @@ export default function BarcodeGeneratorPage() {
             <CardDescription>Live preview of your barcode.</CardDescription>
           </CardHeader>
           <CardContent className="flex items-center justify-center p-8">
-            <svg ref={barcodeRef} className="bg-white p-4 rounded-md"></svg>
+            <div ref={barcodeRef} className="bg-white p-4 rounded-md"></div>
           </CardContent>
         </Card>
       </div>
