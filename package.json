@@ -56,6 +56,7 @@
     "react-barcode": "^1.6.1",
     "react-day-picker": "8.10.1",
     "react-dom": "^19",
+    "react-dropzone": "^14.3.8",
     "react-hook-form": "^7.56.2",
     "react-resizable-panels": "^2.1.7",
     "recharts": "latest",

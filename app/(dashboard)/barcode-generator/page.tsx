@@ -1,31 +1,54 @@
-"use client"
+"use client";
 
-import { useState, useRef } from "react"
-import { usePosData } from "@/components/pos-data-provider"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
-import { Label } from "@/components/ui/label"
-import { Slider } from "@/components/ui/slider"
-import { Switch } from "@/components/ui/switch"
-import { useToast } from "@/components/ui/use-toast"
-import { Printer, Plus, Minus, RefreshCw, Package, Check, X, Pencil } from "lucide-react"
+import { useState, useRef, useEffect } from "react";
+import { usePosData } from "@/components/pos-data-provider";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Slider } from "@/components/ui/slider";
+import { Switch } from "@/components/ui/switch";
+import { useToast } from "@/components/ui/use-toast";
+import {
+  Printer,
+  Plus,
+  Minus,
+  RefreshCw,
+  Package,
+  Check,
+  X,
+  Pencil,
+} from "lucide-react";
+import JsBarcode from "jsbarcode";
 
 // Barcode template types
 type BarcodeTemplate = {
-  id: string
-  name: string
-  width: number
-  height: number
-  labelsPerRow: number
-  fontSize: number
-  showPrice: boolean
-  showName: boolean
-  showSku: boolean
-  margin: number
-  padding: number
-}
+  id: string;
+  name: string;
+  width: number;
+  height: number;
+  labelsPerRow: number;
+  fontSize: number;
+  showPrice: boolean;
+  showName: boolean;
+  showSku: boolean;
+  margin: number;
+  padding: number;
+};
 
 // Default barcode templates
 const BARCODE_TEMPLATES: BarcodeTemplate[] = [
@@ -81,7 +104,7 @@ const BARCODE_TEMPLATES: BarcodeTemplate[] = [
     margin: 4,
     padding: 8,
   },
-]
+];
 
 // Barcode types
 const BARCODE_TYPES = [
@@ -90,75 +113,107 @@ const BARCODE_TYPES = [
   { id: "EAN8", name: "EAN-8" },
   { id: "UPC", name: "UPC-A" },
   { id: "CODE39", name: "Code 39" },
-]
+];
 
 export default function BarcodeDesignerPage() {
-  const { toast } = useToast()
-  const { products } = usePosData()
-  const [selectedProducts, setSelectedProducts] = useState<string[]>([])
-  const [quantity, setQuantity] = useState(1)
-  const [selectedTemplate, setSelectedTemplate] = useState<BarcodeTemplate>(BARCODE_TEMPLATES[1])
-  const [customTemplate, setCustomTemplate] = useState<BarcodeTemplate>(BARCODE_TEMPLATES[3])
-  const [barcodeType, setBarcodeType] = useState(BARCODE_TYPES[0].id)
-  const [showPreview, setShowPreview] = useState(true)
-  const printRef = useRef<HTMLDivElement>(null)
+  const { toast } = useToast();
+  const { products } = usePosData();
+  const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
+  const [quantity, setQuantity] = useState(1);
+  const [selectedTemplate, setSelectedTemplate] = useState<BarcodeTemplate>(
+    BARCODE_TEMPLATES[1]
+  );
+  const [customTemplate, setCustomTemplate] = useState<BarcodeTemplate>(
+    BARCODE_TEMPLATES[3]
+  );
+  const [barcodeType, setBarcodeType] = useState(BARCODE_TYPES[0].id);
+  const [showPreview, setShowPreview] = useState(true);
+  const printRef = useRef<HTMLDivElement>(null);
+
+  // Generate barcodes after rendering
+  useEffect(() => {
+    selectedProducts.forEach((productId, index) => {
+      const product = products.find((p) => p.id === productId);
+      if (product && product.barcode) {
+        const barcodeElement = document.getElementById(
+          `barcode-${productId}-${index}`
+        );
+        if (barcodeElement) {
+          JsBarcode(barcodeElement, product.barcode, {
+            format: barcodeType,
+            width: 2,
+            height: getActiveTemplate().height / 3,
+            fontSize: getActiveTemplate().fontSize,
+            displayValue: false,
+          });
+        }
+      }
+    });
+  }, [
+    selectedProducts,
+    products,
+    barcodeType,
+    selectedTemplate,
+    customTemplate,
+  ]);
 
   // Get the active template (either selected or custom)
   const getActiveTemplate = (): BarcodeTemplate => {
-    return selectedTemplate.id === "custom" ? customTemplate : selectedTemplate
-  }
+    return selectedTemplate.id === "custom" ? customTemplate : selectedTemplate;
+  };
 
   // Handle template change
   const handleTemplateChange = (templateId: string) => {
-    const template = BARCODE_TEMPLATES.find((t) => t.id === templateId)
+    const template = BARCODE_TEMPLATES.find((t) => t.id === templateId);
     if (template) {
-      setSelectedTemplate(template)
+      setSelectedTemplate(template);
       if (template.id === "custom") {
-        setCustomTemplate((prev) => ({ ...prev }))
+        setCustomTemplate((prev) => ({ ...prev }));
       }
     }
-  }
+  };
 
   // Handle product selection
   const handleProductSelect = (productId: string) => {
     setSelectedProducts((prev) => {
       if (prev.includes(productId)) {
-        return prev.filter((id) => id !== productId)
+        return prev.filter((id) => id !== productId);
       } else {
-        return [...prev, productId]
+        return [...prev, productId];
       }
-    })
-  }
+    });
+  };
 
   // Handle select all products
   const handleSelectAll = () => {
     if (selectedProducts.length === products.length) {
-      setSelectedProducts([])
+      setSelectedProducts([]);
     } else {
-      setSelectedProducts(products.map((p) => p.id))
+      setSelectedProducts(products.map((p) => p.id));
     }
-  }
+  };
 
   // Handle print button click
   const handlePrint = () => {
     if (printRef.current) {
       try {
         // Create a new window for printing
-        const printWindow = window.open("", "_blank")
+        const printWindow = window.open("", "_blank");
         if (!printWindow) {
           toast({
             title: "Error",
-            description: "Could not open print window. Please check your popup blocker settings.",
+            description:
+              "Could not open print window. Please check your popup blocker settings.",
             variant: "destructive",
-          })
-          return
+          });
+          return;
         }
 
         // Get the print content
-        const printContent = printRef.current.innerHTML
+        const printContent = printRef.current.innerHTML;
 
         // Write the content to the new window
-        printWindow.document.open()
+        printWindow.document.open();
         printWindow.document.write(`
           <html>
             <head>
@@ -193,30 +248,33 @@ export default function BarcodeDesignerPage() {
               </script>
             </body>
           </html>
-        `)
-        printWindow.document.close()
+        `);
+        printWindow.document.close();
 
         toast({
           title: "Barcodes sent to printer",
-          description: `Printing ${selectedProducts.length * quantity} barcodes`,
-        })
+          description: `Printing ${
+            selectedProducts.length * quantity
+          } barcodes`,
+        });
       } catch (error) {
-        console.error("Print error:", error)
+        console.error("Print error:", error);
         toast({
           title: "Print Error",
-          description: "There was an error while trying to print. Please try again.",
+          description:
+            "There was an error while trying to print. Please try again.",
           variant: "destructive",
-        })
+        });
       }
     }
-  }
+  };
 
   // Render a barcode label
   const renderBarcodeLabel = (productId: string, index: number) => {
-    const product = products.find((p) => p.id === productId)
-    if (!product || !product.barcode) return null
+    const product = products.find((p) => p.id === productId);
+    if (!product || !product.barcode) return null;
 
-    const template = getActiveTemplate()
+    const template = getActiveTemplate();
 
     return (
       <div
@@ -230,42 +288,62 @@ export default function BarcodeDesignerPage() {
         }}
       >
         {template.showName && (
-          <div className="text-center font-medium truncate w-full" style={{ fontSize: `${template.fontSize}pt` }}>
+          <div
+            className="text-center font-medium truncate w-full"
+            style={{ fontSize: `${template.fontSize}pt` }}
+          >
             {product.name}
           </div>
         )}
 
-        <div
-          className="barcode-placeholder my-1 bg-muted h-10 w-3/4"
+        <svg
+          id={`barcode-${productId}-${index}`}
+          className="my-1"
           style={{
-            height: `${template.height / 3}px`, // Adjust height dynamically
+            width: `${template.width * 0.8}px`,
+            height: `${template.height / 3}px`,
           }}
-        ></div>
+        ></svg>
 
-        <div className="flex w-full justify-between" style={{ fontSize: `${template.fontSize}pt` }}>
-          {template.showSku && product.sku && <div className="text-muted-foreground">SKU: {product.sku}</div>}
-          {template.showPrice && <div className="font-bold">${product.price.toFixed(2)}</div>}
+        <div
+          className="flex w-full justify-between"
+          style={{ fontSize: `${template.fontSize}pt` }}
+        >
+          {template.showSku && product.sku && (
+            <div className="text-muted-foreground">SKU: {product.sku}</div>
+          )}
+          {template.showPrice && (
+            <div className="font-bold">${product.price.toFixed(2)}</div>
+          )}
         </div>
       </div>
-    )
-  }
+    );
+  };
 
   // Render preview barcodes
   const renderPreviewBarcodes = () => {
     if (!products || products.length === 0) {
-      return <div className="text-muted-foreground p-4">No products available</div>
+      return (
+        <div className="text-muted-foreground p-4">No products available</div>
+      );
     }
 
     const validProductIds = selectedProducts.filter((id) => {
-      const product = products.find((p) => p.id === id)
-      return product && product.barcode
-    })
+      const product = products.find((p) => p.id === id);
+      return product && product.barcode;
+    });
 
     if (validProductIds.length === 0) {
-      return <div className="text-muted-foreground p-4">No products with barcodes selected</div>
+      return (
+        <div className="text-muted-foreground p-4">
+          No products with barcodes selected
+        </div>
+      );
     }
 
-    const previewItems = validProductIds.slice(0, 6).map((productId, index) => renderBarcodeLabel(productId, index))
+    const previewItems = validProductIds
+      .slice(0, 6)
+      .map((productId, index) => renderBarcodeLabel(productId, index));
 
     return (
       <>
@@ -276,39 +354,49 @@ export default function BarcodeDesignerPage() {
           </div>
         )}
       </>
-    )
-  }
+    );
+  };
 
   // Render print barcodes
   const renderPrintBarcodes = () => {
     const validProductIds = selectedProducts.filter((id) => {
-      const product = products.find((p) => p.id === id)
-      return product && product.barcode
-    })
+      const product = products.find((p) => p.id === id);
+      return product && product.barcode;
+    });
 
     if (validProductIds.length === 0) {
-      return <div className="text-muted-foreground p-4">No products with barcodes selected</div>
+      return (
+        <div className="text-muted-foreground p-4">
+          No products with barcodes selected
+        </div>
+      );
     }
 
-    const printItems = []
-    for (let productIndex = 0; productIndex < validProductIds.length; productIndex++) {
-      const productId = validProductIds[productIndex]
+    const printItems = [];
+    for (
+      let productIndex = 0;
+      productIndex < validProductIds.length;
+      productIndex++
+    ) {
+      const productId = validProductIds[productIndex];
       for (let i = 0; i < quantity; i++) {
-        const element = renderBarcodeLabel(productId, i)
+        const element = renderBarcodeLabel(productId, i);
         if (element) {
-          printItems.push(element)
+          printItems.push(element);
         }
       }
     }
 
-    return printItems
-  }
+    return printItems;
+  };
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Barcode Designer</h1>
-        <p className="text-muted-foreground">Create and print barcodes for your products.</p>
+        <p className="text-muted-foreground">
+          Create and print barcodes for your products.
+        </p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -316,12 +404,17 @@ export default function BarcodeDesignerPage() {
           <Card>
             <CardHeader>
               <CardTitle>Barcode Settings</CardTitle>
-              <CardDescription>Configure your barcode design and print settings.</CardDescription>
+              <CardDescription>
+                Configure your barcode design and print settings.
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="template">Label Template</Label>
-                <Select value={selectedTemplate.id} onValueChange={handleTemplateChange}>
+                <Select
+                  value={selectedTemplate.id}
+                  onValueChange={handleTemplateChange}
+                >
                   <SelectTrigger id="template">
                     <SelectValue placeholder="Select template" />
                   </SelectTrigger>
@@ -354,7 +447,11 @@ export default function BarcodeDesignerPage() {
               <div className="space-y-2">
                 <Label htmlFor="quantity">Quantity (per product)</Label>
                 <div className="flex items-center space-x-2">
-                  <Button variant="outline" size="icon" onClick={() => setQuantity((prev) => Math.max(1, prev - 1))}>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setQuantity((prev) => Math.max(1, prev - 1))}
+                  >
                     <Minus className="h-4 w-4" />
                   </Button>
                   <Input
@@ -362,17 +459,29 @@ export default function BarcodeDesignerPage() {
                     type="number"
                     min="1"
                     value={quantity}
-                    onChange={(e) => setQuantity(Math.max(1, Number.parseInt(e.target.value) || 1))}
+                    onChange={(e) =>
+                      setQuantity(
+                        Math.max(1, Number.parseInt(e.target.value) || 1)
+                      )
+                    }
                     className="text-center"
                   />
-                  <Button variant="outline" size="icon" onClick={() => setQuantity((prev) => prev + 1)}>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setQuantity((prev) => prev + 1)}
+                  >
                     <Plus className="h-4 w-4" />
                   </Button>
                 </div>
               </div>
 
               <div className="flex items-center space-x-2 pt-2">
-                <Switch id="preview" checked={showPreview} onCheckedChange={setShowPreview} />
+                <Switch
+                  id="preview"
+                  checked={showPreview}
+                  onCheckedChange={setShowPreview}
+                />
                 <Label htmlFor="preview">Show Preview</Label>
               </div>
             </CardContent>
@@ -380,7 +489,10 @@ export default function BarcodeDesignerPage() {
               <Button variant="outline" onClick={() => setSelectedProducts([])}>
                 Clear Selection
               </Button>
-              <Button onClick={handlePrint} disabled={selectedProducts.length === 0}>
+              <Button
+                onClick={handlePrint}
+                disabled={selectedProducts.length === 0}
+              >
                 <Printer className="mr-2 h-4 w-4" />
                 Print Barcodes
               </Button>
@@ -391,7 +503,9 @@ export default function BarcodeDesignerPage() {
             <Card>
               <CardHeader>
                 <CardTitle>Custom Template</CardTitle>
-                <CardDescription>Customize your barcode template.</CardDescription>
+                <CardDescription>
+                  Customize your barcode template.
+                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
@@ -457,7 +571,9 @@ export default function BarcodeDesignerPage() {
                       })
                     }
                   />
-                  <div className="text-center text-sm text-muted-foreground">{customTemplate.fontSize}pt</div>
+                  <div className="text-center text-sm text-muted-foreground">
+                    {customTemplate.fontSize}pt
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
@@ -536,7 +652,11 @@ export default function BarcodeDesignerPage() {
                 </div>
               </CardContent>
               <CardFooter>
-                <Button variant="outline" className="w-full" onClick={() => setCustomTemplate(BARCODE_TEMPLATES[3])}>
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => setCustomTemplate(BARCODE_TEMPLATES[3])}
+                >
                   <RefreshCw className="mr-2 h-4 w-4" />
                   Reset to Default
                 </Button>
@@ -549,7 +669,9 @@ export default function BarcodeDesignerPage() {
           <Card className="h-full flex flex-col">
             <CardHeader>
               <CardTitle>Select Products</CardTitle>
-              <CardDescription>Choose products to generate barcodes for.</CardDescription>
+              <CardDescription>
+                Choose products to generate barcodes for.
+              </CardDescription>
             </CardHeader>
             <CardContent className="flex-grow overflow-hidden flex flex-col">
               <div className="flex justify-between mb-4">
@@ -567,7 +689,8 @@ export default function BarcodeDesignerPage() {
                   )}
                 </Button>
                 <div className="text-sm text-muted-foreground">
-                  {selectedProducts.length} of {products.length} products selected
+                  {selectedProducts.length} of {products.length} products
+                  selected
                 </div>
               </div>
 
@@ -584,7 +707,10 @@ export default function BarcodeDesignerPage() {
                   </thead>
                   <tbody>
                     {products.map((product) => (
-                      <tr key={product.id} className="border-t hover:bg-muted/50">
+                      <tr
+                        key={product.id}
+                        className="border-t hover:bg-muted/50"
+                      >
                         <td className="p-2">
                           <div className="flex items-center justify-center">
                             <input
@@ -611,15 +737,23 @@ export default function BarcodeDesignerPage() {
                             </div>
                             <div>
                               <div className="font-medium">{product.name}</div>
-                              {product.sku && <div className="text-xs text-muted-foreground">SKU: {product.sku}</div>}
+                              {product.sku && (
+                                <div className="text-xs text-muted-foreground">
+                                  SKU: {product.sku}
+                                </div>
+                              )}
                             </div>
                           </div>
                         </td>
                         <td className="p-2">
                           {product.barcode ? (
-                            <div className="font-mono text-xs">{product.barcode}</div>
+                            <div className="font-mono text-xs">
+                              {product.barcode}
+                            </div>
                           ) : (
-                            <div className="text-xs text-destructive">No barcode</div>
+                            <div className="text-xs text-destructive">
+                              No barcode
+                            </div>
                           )}
                         </td>
                         <td className="p-2">${product.price.toFixed(2)}</td>
@@ -631,9 +765,9 @@ export default function BarcodeDesignerPage() {
                               disabled={!product.barcode}
                               onClick={() => {
                                 if (!selectedProducts.includes(product.id)) {
-                                  handleProductSelect(product.id)
+                                  handleProductSelect(product.id);
                                 }
-                                handlePrint()
+                                handlePrint();
                               }}
                             >
                               <Printer className="h-4 w-4" />
@@ -645,8 +779,9 @@ export default function BarcodeDesignerPage() {
                                 // Navigate to product edit page
                                 toast({
                                   title: "Edit Product",
-                                  description: "Navigate to product edit page to add or edit barcode",
-                                })
+                                  description:
+                                    "Navigate to product edit page to add or edit barcode",
+                                });
                               }}
                             >
                               <Pencil className="h-4 w-4" />
@@ -657,8 +792,12 @@ export default function BarcodeDesignerPage() {
                     ))}
                     {products.length === 0 && (
                       <tr>
-                        <td colSpan={5} className="p-8 text-center text-muted-foreground">
-                          No products found. Add products with barcodes to get started.
+                        <td
+                          colSpan={5}
+                          className="p-8 text-center text-muted-foreground"
+                        >
+                          No products found. Add products with barcodes to get
+                          started.
                         </td>
                       </tr>
                     )}
@@ -674,8 +813,11 @@ export default function BarcodeDesignerPage() {
                       className="flex flex-wrap justify-start"
                       style={{
                         maxWidth: `${
-                          getActiveTemplate().width * getActiveTemplate().labelsPerRow +
-                          getActiveTemplate().margin * 2 * getActiveTemplate().labelsPerRow
+                          getActiveTemplate().width *
+                            getActiveTemplate().labelsPerRow +
+                          getActiveTemplate().margin *
+                            2 *
+                            getActiveTemplate().labelsPerRow
                         }px`,
                       }}
                     >
@@ -697,7 +839,9 @@ export default function BarcodeDesignerPage() {
             style={{
               maxWidth: `${
                 getActiveTemplate().width * getActiveTemplate().labelsPerRow +
-                getActiveTemplate().margin * 2 * getActiveTemplate().labelsPerRow
+                getActiveTemplate().margin *
+                  2 *
+                  getActiveTemplate().labelsPerRow
               }px`,
             }}
           >
@@ -706,9 +850,5 @@ export default function BarcodeDesignerPage() {
         </div>
       </div>
     </div>
-  )
+  );
 }
-
-
-
-

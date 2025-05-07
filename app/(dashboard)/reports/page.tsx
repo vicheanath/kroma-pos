@@ -610,26 +610,6 @@ export default function ReportsPage() {
               ) : (
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={revenueData}>
-                    <defs>
-                      <linearGradient
-                        id="lineGradient"
-                        x1="0"
-                        y1="0"
-                        x2="0"
-                        y2="1"
-                      >
-                        <stop
-                          offset="0%"
-                          stopColor="hsl(var(--primary))"
-                          stopOpacity={0.8}
-                        />
-                        <stop
-                          offset="100%"
-                          stopColor="hsl(var(--primary))"
-                          stopOpacity={0.2}
-                        />
-                      </linearGradient>
-                    </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
                     <XAxis dataKey="name" stroke="#8884d8" />
                     <YAxis stroke="#8884d8" />
@@ -637,10 +617,10 @@ export default function ReportsPage() {
                     <Line
                       type="monotone"
                       dataKey="sales"
-                      stroke="url(#lineGradient)"
+                      stroke="rgb(34, 197, 94)" // Tailwind green-500
                       strokeWidth={3}
-                      dot={{ r: 5, fill: "hsl(var(--primary))" }}
-                      activeDot={{ r: 8 }}
+                      dot={{ r: 5, fill: "rgb(34, 197, 94)" }} // Tailwind green-500
+                      activeDot={{ r: 8, fill: "rgb(22, 163, 74)" }} // Tailwind green-600
                     />
                   </LineChart>
                 </ResponsiveContainer>
@@ -660,33 +640,13 @@ export default function ReportsPage() {
               ) : (
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={topProductsData}>
-                    <defs>
-                      <linearGradient
-                        id="barGradient"
-                        x1="0"
-                        y1="0"
-                        x2="0"
-                        y2="1"
-                      >
-                        <stop
-                          offset="0%"
-                          stopColor="hsl(var(--primary))"
-                          stopOpacity={0.8}
-                        />
-                        <stop
-                          offset="100%"
-                          stopColor="hsl(var(--primary))"
-                          stopOpacity={0.4}
-                        />
-                      </linearGradient>
-                    </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
                     <XAxis dataKey="name" stroke="#8884d8" />
                     <YAxis stroke="#8884d8" />
                     <RechartsTooltip content={<ChartTooltip />} />
                     <Bar
                       dataKey="sales"
-                      fill="url(#barGradient)"
+                      fill="rgb(239, 68, 68)" // Tailwind red-500
                       radius={[10, 10, 0, 0]}
                     />
                   </BarChart>
