@@ -44,8 +44,8 @@
 ### Clone and Install
 
 ```bash
-git clone https://github.com/yourusername/kromapos.git
-cd kromapos
+git clone https://github.com/vicheanath/kroma-pos.git
+cd kroma-pos
 npm install
 ```
 
