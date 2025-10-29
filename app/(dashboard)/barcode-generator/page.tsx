@@ -22,6 +22,22 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Empty,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+  EmptyDescription,
+} from "@/components/ui/empty";
 import { useToast } from "@/components/ui/use-toast";
 import {
   Printer,
@@ -695,114 +711,116 @@ export default function BarcodeDesignerPage() {
               </div>
 
               <div className="overflow-auto flex-grow border rounded-md">
-                <table className="w-full">
-                  <thead className="bg-muted sticky top-0">
-                    <tr>
-                      <th className="text-left p-2 font-medium">Select</th>
-                      <th className="text-left p-2 font-medium">Product</th>
-                      <th className="text-left p-2 font-medium">Barcode</th>
-                      <th className="text-left p-2 font-medium">Price</th>
-                      <th className="text-left p-2 font-medium">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {products.map((product) => (
-                      <tr
-                        key={product.id}
-                        className="border-t hover:bg-muted/50"
-                      >
-                        <td className="p-2">
-                          <div className="flex items-center justify-center">
-                            <input
-                              type="checkbox"
-                              checked={selectedProducts.includes(product.id)}
-                              onChange={() => handleProductSelect(product.id)}
-                              className="h-4 w-4"
-                              disabled={!product.barcode}
-                            />
-                          </div>
-                        </td>
-                        <td className="p-2">
-                          <div className="flex items-center gap-2">
-                            <div className="w-8 h-8 rounded bg-muted flex items-center justify-center overflow-hidden">
-                              {product.image ? (
-                                <img
-                                  src={product.image || "/placeholder.svg"}
-                                  alt={product.name}
-                                  className="h-full w-full object-cover"
-                                />
-                              ) : (
-                                <Package className="h-4 w-4 text-muted-foreground" />
-                              )}
+                <Table>
+                  <TableHeader className="sticky top-0 bg-muted z-10">
+                    <TableRow>
+                      <TableHead className="w-12">Select</TableHead>
+                      <TableHead>Product</TableHead>
+                      <TableHead>Barcode</TableHead>
+                      <TableHead>Price</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {products.length > 0 ? (
+                      products.map((product) => (
+                        <TableRow key={product.id}>
+                          <TableCell>
+                            <div className="flex items-center justify-center">
+                              <Checkbox
+                                checked={selectedProducts.includes(product.id)}
+                                onCheckedChange={() => handleProductSelect(product.id)}
+                                disabled={!product.barcode}
+                              />
                             </div>
-                            <div>
-                              <div className="font-medium">{product.name}</div>
-                              {product.sku && (
-                                <div className="text-xs text-muted-foreground">
-                                  SKU: {product.sku}
-                                </div>
-                              )}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <div className="w-8 h-8 rounded bg-muted flex items-center justify-center overflow-hidden">
+                                {product.image ? (
+                                  <img
+                                    src={product.image || "/placeholder.svg"}
+                                    alt={product.name}
+                                    className="h-full w-full object-cover"
+                                  />
+                                ) : (
+                                  <Package className="h-4 w-4 text-muted-foreground" />
+                                )}
+                              </div>
+                              <div>
+                                <div className="font-medium">{product.name}</div>
+                                {product.sku && (
+                                  <div className="text-xs text-muted-foreground">
+                                    SKU: {product.sku}
+                                  </div>
+                                )}
+                              </div>
                             </div>
-                          </div>
-                        </td>
-                        <td className="p-2">
-                          {product.barcode ? (
-                            <div className="font-mono text-xs">
-                              {product.barcode}
+                          </TableCell>
+                          <TableCell>
+                            {product.barcode ? (
+                              <div className="font-mono text-xs">
+                                {product.barcode}
+                              </div>
+                            ) : (
+                              <div className="text-xs text-destructive">
+                                No barcode
+                              </div>
+                            )}
+                          </TableCell>
+                          <TableCell>${product.price.toFixed(2)}</TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                disabled={!product.barcode}
+                                onClick={() => {
+                                  if (!selectedProducts.includes(product.id)) {
+                                    handleProductSelect(product.id);
+                                  }
+                                  handlePrint();
+                                }}
+                              >
+                                <Printer className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => {
+                                  // Navigate to product edit page
+                                  toast({
+                                    title: "Edit Product",
+                                    description:
+                                      "Navigate to product edit page to add or edit barcode",
+                                  });
+                                }}
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
                             </div>
-                          ) : (
-                            <div className="text-xs text-destructive">
-                              No barcode
-                            </div>
-                          )}
-                        </td>
-                        <td className="p-2">${product.price.toFixed(2)}</td>
-                        <td className="p-2">
-                          <div className="flex items-center gap-2">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              disabled={!product.barcode}
-                              onClick={() => {
-                                if (!selectedProducts.includes(product.id)) {
-                                  handleProductSelect(product.id);
-                                }
-                                handlePrint();
-                              }}
-                            >
-                              <Printer className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => {
-                                // Navigate to product edit page
-                                toast({
-                                  title: "Edit Product",
-                                  description:
-                                    "Navigate to product edit page to add or edit barcode",
-                                });
-                              }}
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                    {products.length === 0 && (
-                      <tr>
-                        <td
-                          colSpan={5}
-                          className="p-8 text-center text-muted-foreground"
-                        >
-                          No products found. Add products with barcodes to get
-                          started.
-                        </td>
-                      </tr>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={5} className="py-8">
+                          <Empty>
+                            <EmptyHeader>
+                              <EmptyMedia variant="icon">
+                                <Package className="h-6 w-6" />
+                              </EmptyMedia>
+                              <EmptyTitle>No products found</EmptyTitle>
+                              <EmptyDescription>
+                                Add products with barcodes to get started.
+                              </EmptyDescription>
+                            </EmptyHeader>
+                          </Empty>
+                        </TableCell>
+                      </TableRow>
                     )}
-                  </tbody>
-                </table>
+                  </TableBody>
+                </Table>
               </div>
 
               {showPreview && selectedProducts.length > 0 && (

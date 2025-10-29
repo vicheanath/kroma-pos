@@ -9,7 +9,25 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { Badge } from "@/components/ui/badge"
+import {
+  Empty,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+  EmptyDescription,
+  EmptyContent,
+} from "@/components/ui/empty"
 import { Store, Plus, Edit, Trash2 } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
 
@@ -108,16 +126,24 @@ export default function StoresPage() {
 
         <motion.div variants={itemVariants}>
           <Card>
-            <CardContent className="flex flex-col items-center justify-center py-12">
-              <Store className="h-12 w-12 text-muted-foreground mb-4" />
-              <h2 className="text-xl font-semibold mb-2">Enterprise Feature</h2>
-              <p className="text-center text-muted-foreground mb-6 max-w-md">
-                Multi-store management is only available on the Enterprise plan. Upgrade your subscription to access
-                this feature.
-              </p>
-              <Button asChild>
-                <a href="/settings/subscription">Upgrade to Enterprise</a>
-              </Button>
+            <CardContent className="py-12">
+              <Empty>
+                <EmptyHeader>
+                  <EmptyMedia variant="icon">
+                    <Store className="h-6 w-6" />
+                  </EmptyMedia>
+                  <EmptyTitle>Enterprise Feature</EmptyTitle>
+                  <EmptyDescription>
+                    Multi-store management is only available on the Enterprise plan. Upgrade your subscription to access
+                    this feature.
+                  </EmptyDescription>
+                </EmptyHeader>
+                <EmptyContent>
+                  <Button asChild>
+                    <a href="/settings/subscription">Upgrade to Enterprise</a>
+                  </Button>
+                </EmptyContent>
+              </Empty>
             </CardContent>
           </Card>
         </motion.div>
@@ -154,7 +180,8 @@ export default function StoresPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {stores.map((store) => (
+                {stores.length > 0 ? (
+                  stores.map((store) => (
                   <TableRow key={store.id}>
                     <TableCell className="font-medium">{store.name}</TableCell>
                     <TableCell>{store.address}</TableCell>
@@ -194,7 +221,24 @@ export default function StoresPage() {
                       </div>
                     </TableCell>
                   </TableRow>
-                ))}
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={4} className="py-8">
+                      <Empty>
+                        <EmptyHeader>
+                          <EmptyMedia variant="icon">
+                            <Store className="h-6 w-6" />
+                          </EmptyMedia>
+                          <EmptyTitle>No stores found</EmptyTitle>
+                          <EmptyDescription>
+                            Add your first store location to get started.
+                          </EmptyDescription>
+                        </EmptyHeader>
+                      </Empty>
+                    </TableCell>
+                  </TableRow>
+                )}
               </TableBody>
             </Table>
           </CardContent>
@@ -274,29 +318,32 @@ export default function StoresPage() {
       </Dialog>
 
       {/* Delete Store Dialog */}
-      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Delete Store</DialogTitle>
-          </DialogHeader>
-          {currentStore && (
-            <div className="py-4">
-              <p>
-                Are you sure you want to delete <span className="font-semibold">{currentStore.name}</span>?
-              </p>
-              <p className="text-sm text-muted-foreground mt-2">This action cannot be undone.</p>
-            </div>
-          )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Store</AlertDialogTitle>
+            <AlertDialogDescription>
+              {currentStore && (
+                <>
+                  Are you sure you want to delete <span className="font-semibold">{currentStore.name}</span>?
+                  This action cannot be undone.
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setIsDeleteDialogOpen(false)}>
               Cancel
-            </Button>
-            <Button variant="destructive" onClick={handleDeleteStore}>
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteStore}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
               Delete Store
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </motion.div>
   )
 }

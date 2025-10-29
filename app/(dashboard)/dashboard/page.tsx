@@ -7,6 +7,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { DollarSign, Package, ShoppingCart, AlertTriangle, Tags, Crown, ArrowRight } from "lucide-react"
+import {
+  Empty,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+  EmptyDescription,
+} from "@/components/ui/empty"
 import { motion } from "framer-motion"
 import { ElectronReadyIndicator } from "@/components/electron-ready-indicator"
 import Link from "next/link"
@@ -209,7 +216,17 @@ export default function DashboardPage() {
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground">No sales recorded yet.</p>
+              <Empty>
+                <EmptyHeader>
+                  <EmptyMedia variant="icon">
+                    <ShoppingCart className="h-6 w-6" />
+                  </EmptyMedia>
+                  <EmptyTitle>No sales recorded yet</EmptyTitle>
+                  <EmptyDescription>
+                    Start making sales to see them appear here.
+                  </EmptyDescription>
+                </EmptyHeader>
+              </Empty>
             )}
           </CardContent>
         </Card>
@@ -248,7 +265,17 @@ export default function DashboardPage() {
                   ))}
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground">No products added yet.</p>
+              <Empty>
+                <EmptyHeader>
+                  <EmptyMedia variant="icon">
+                    <Package className="h-6 w-6" />
+                  </EmptyMedia>
+                  <EmptyTitle>No products added yet</EmptyTitle>
+                  <EmptyDescription>
+                    Add products to see your top sellers here.
+                  </EmptyDescription>
+                </EmptyHeader>
+              </Empty>
             )}
           </CardContent>
         </Card>

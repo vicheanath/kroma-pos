@@ -30,7 +30,14 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { Percent, DollarSign, Plus, Edit, Trash2 } from "lucide-react";
+import {
+  Empty,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+  EmptyDescription,
+} from "@/components/ui/empty";
+import { Percent, DollarSign, Plus, Edit, Trash2, Tag } from "lucide-react";
 import { type Discount, type DiscountType } from "@/lib/db";
 export default function DiscountsPage() {
   const { discounts, addDiscount, updateDiscount, removeDiscount } =
@@ -172,8 +179,18 @@ export default function DiscountsPage() {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8">
-                    <p className="text-muted-foreground">No discounts found</p>
+                  <TableCell colSpan={6} className="py-8">
+                    <Empty>
+                      <EmptyHeader>
+                        <EmptyMedia variant="icon">
+                          <Tag className="h-6 w-6" />
+                        </EmptyMedia>
+                        <EmptyTitle>No discounts found</EmptyTitle>
+                        <EmptyDescription>
+                          Create your first discount to start offering promotions to customers.
+                        </EmptyDescription>
+                      </EmptyHeader>
+                    </Empty>
                   </TableCell>
                 </TableRow>
               )}

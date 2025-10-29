@@ -1,9 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
+import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { cn } from "@/lib/utils";
 import {
   Home,
   ShoppingCart,
@@ -14,11 +12,22 @@ import {
   BarChart3,
   ClipboardList,
   Settings,
-  Menu,
-  X,
   QrCode,
   Barcode,
 } from "lucide-react";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarRail,
+  useSidebar,
+} from "@/components/ui/sidebar";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: Home },
@@ -34,64 +43,72 @@ const navItems = [
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 
-interface SidebarProps {
-  onCollapseChange?: (isCollapsed: boolean) => void;
-}
-
-export function Sidebar({ onCollapseChange }: SidebarProps) {
-  const [isCollapsed, setIsCollapsed] = useState(() => {
-    if (typeof window !== "undefined") {
-      return localStorage.getItem("sidebar-collapsed") === "true";
-    }
-    return false;
-  });
-
-  const toggleSidebar = () => {
-    setIsCollapsed((prev) => {
-      const newState = !prev;
-      localStorage.setItem("sidebar-collapsed", newState.toString());
-      return newState;
-    });
-  };
-
-  useEffect(() => {
-    if (onCollapseChange) {
-      onCollapseChange(isCollapsed);
-    }
-  }, [isCollapsed, onCollapseChange]);
+export function AppSidebar() {
+  const pathname = usePathname();
+  const { state } = useSidebar();
 
   return (
-    <motion.div
-      animate={{ width: isCollapsed ? 60 : 240 }}
-      className="fixed inset-y-0 left-0 z-10 flex h-full flex-col bg-gray-800 text-white transition-all"
-    >
-      <div className="flex items-center justify-between p-4">
-        <span className={cn("text-lg font-bold", isCollapsed && "hidden")}>
-          POS System
-        </span>
-        <button onClick={toggleSidebar} aria-label="Toggle Sidebar">
-          {isCollapsed ? (
-            <Menu className="h-6 w-6" />
-          ) : (
-            <X className="h-6 w-6" />
-          )}
-        </button>
-      </div>
-      <nav className="flex flex-col gap-2 p-2">
-        {navItems.map(({ href, label, icon: Icon }) => (
-          <Link
-            key={href}
-            href={href}
-            className={cn(
-              "flex items-center gap-3 p-2 rounded hover:bg-gray-700",
-              isCollapsed && "justify-center"
-            )}
-          >
-            <Icon className="h-5 w-5" />
-            {!isCollapsed && <span>{label}</span>}
-          </Link>
-        ))}
-      </nav>
-    </motion.div>
+    <Sidebar collapsible="icon" variant="inset">
+      <SidebarHeader>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton size="lg" asChild>
+              <Link href="/dashboard">
+                <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
+                  <Package className="size-4" />
+                </div>
+                <div className="grid flex-1 text-left text-sm leading-tight">
+                  <span className="truncate font-semibold">POS System</span>
+                  <span className="truncate text-xs">Point of Sale</span>
+                </div>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarHeader>
+      <SidebarContent>
+        <SidebarGroup>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {navItems.map((item) => {
+                const Icon = item.icon;
+                const isActive = pathname === item.href;
+                return (
+                  <SidebarMenuItem key={item.href}>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={isActive}
+                      tooltip={item.label}
+                    >
+                      <Link href={item.href}>
+                        <Icon />
+                        <span>{item.label}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      </SidebarContent>
+      <SidebarFooter>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton size="lg" className="md:h-8 md:w-full">
+              <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
+                <Settings className="size-4" />
+              </div>
+              <div className="grid flex-1 text-left text-sm leading-tight">
+                <span className="truncate font-semibold">
+                  {state === "collapsed" ? "Settings" : "System Settings"}
+                </span>
+              </div>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarFooter>
+      <SidebarRail />
+    </Sidebar>
   );
 }

@@ -15,6 +15,7 @@ import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
 import {
   Search,
   ShoppingCart,
@@ -31,6 +32,13 @@ import {
   BarChart,
 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
+import {
+  Empty,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+  EmptyDescription,
+} from "@/components/ui/empty";
 import { InvoicePrint } from "@/components/invoice-print";
 import {
   ReceiptSettingsProvider,
@@ -58,7 +66,6 @@ export default function SalesPage() {
   const [saleNotes, setSaleNotes] = useState("");
   const [completedSale, setCompletedSale] = useState<Sale | null>(null);
   const [isInvoiceOpen, setIsInvoiceOpen] = useState(false);
-  const [quickAddAmount, setQuickAddAmount] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState("all");
   const [isDiscountDialogOpen, setIsDiscountDialogOpen] = useState(false);
   const [discountType, setDiscountType] = useState<"percentage" | "fixed">(
@@ -83,22 +90,27 @@ export default function SalesPage() {
 
     // Apply search filter
     if (searchQuery.trim() !== "") {
+      const query = searchQuery.toLowerCase().trim();
       filtered = filtered.filter(
         (product) =>
-          product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          product.category.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          (product.barcode && product.barcode.includes(searchQuery)) ||
-          (product.sku &&
-            product.sku.toLowerCase().includes(searchQuery.toLowerCase())) ||
+          product.name.toLowerCase().includes(query) ||
+          (product.category?.name && product.category.name.toLowerCase().includes(query)) ||
+          (product.barcode && product.barcode.toLowerCase().includes(query)) ||
+          (product.sku && product.sku.toLowerCase().includes(query)) ||
           (product.description &&
-            product.description
-              .toLowerCase()
-              .includes(searchQuery.toLowerCase()))
+            product.description.toLowerCase().includes(query))
       );
     }
 
     setSearchResults(filtered);
   }, [searchQuery, activeCategory, products]);
+
+  // Initialize searchResults with all products on first load
+  useEffect(() => {
+    if (products.length > 0 && searchResults.length === 0 && searchQuery === "" && activeCategory === "all") {
+      setSearchResults(products);
+    }
+  }, [products, searchResults.length, searchQuery, activeCategory]);
 
   // Calculate cart subtotal
   const cartSubtotal = cart.reduce(
@@ -267,15 +279,98 @@ export default function SalesPage() {
     }
   };
 
-  // Quick add functionality
-  const handleQuickAdd = (product: Product) => {
-    if (quickAddAmount) {
-      addToCart(product, quickAddAmount);
-      setQuickAddAmount(null);
-    } else {
-      setQuickAddAmount(1);
-    }
+  // Quick add functionality - directly add 1 quantity
+  const handleQuickAdd = (e: React.MouseEvent, product: Product) => {
+    e.stopPropagation();
+    addToCart(product, 1);
   };
+
+  // Barcode scanning - detect rapid input of numbers/characters
+  const [barcodeBuffer, setBarcodeBuffer] = useState("");
+  const barcodeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    const handleBarcodeInput = (e: KeyboardEvent) => {
+      // Ignore if typing in an input field
+      if (
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLTextAreaElement
+      ) {
+        return;
+      }
+
+      // Check if Enter is pressed (barcode scanners often send Enter after the code)
+      if (e.key === "Enter" && barcodeBuffer.length > 0) {
+        e.preventDefault();
+        const trimmedBarcode = barcodeBuffer.trim();
+        const product = products.find((p) => p.barcode === trimmedBarcode);
+        if (product) {
+          // Add to cart directly
+          setCart((prevCart) => {
+            const existingItem = prevCart.find(
+              (item) => item.product.id === product.id
+            );
+
+            if (existingItem) {
+              if (existingItem.quantity + 1 > product.stock) {
+                toast({
+                  title: "Stock Limit Reached",
+                  description: `Only ${product.stock} units available.`,
+                  variant: "destructive",
+                });
+                return prevCart;
+              }
+              return prevCart.map((item) =>
+                item.product.id === product.id
+                  ? { ...item, quantity: item.quantity + 1 }
+                  : item
+              );
+            } else {
+              return [...prevCart, { product, quantity: 1 }];
+            }
+          });
+          toast({
+            title: "Product Scanned",
+            description: `${product.name} added to cart.`,
+          });
+        } else {
+          toast({
+            title: "Barcode Not Found",
+            description: `No product found with barcode: ${trimmedBarcode}`,
+            variant: "destructive",
+          });
+        }
+        setBarcodeBuffer("");
+        if (barcodeTimeoutRef.current) {
+          clearTimeout(barcodeTimeoutRef.current);
+          barcodeTimeoutRef.current = null;
+        }
+        return;
+      }
+
+      // Accumulate characters (barcode scanners input very quickly)
+      if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        setBarcodeBuffer((prev) => prev + e.key);
+
+        // Clear buffer after 100ms of no input (barcode scanners are very fast)
+        if (barcodeTimeoutRef.current) {
+          clearTimeout(barcodeTimeoutRef.current);
+        }
+        barcodeTimeoutRef.current = setTimeout(() => {
+          setBarcodeBuffer("");
+        }, 100);
+      }
+    };
+
+    window.addEventListener("keydown", handleBarcodeInput);
+    return () => {
+      window.removeEventListener("keydown", handleBarcodeInput);
+      if (barcodeTimeoutRef.current) {
+        clearTimeout(barcodeTimeoutRef.current);
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [barcodeBuffer, products, toast]);
 
   // Apply discount
   const applyDiscount = () => {
@@ -348,13 +443,13 @@ export default function SalesPage() {
 
   return (
     <ReceiptSettingsProvider>
-      <div className="flex h-full flex-col md:flex-row gap-4">
+      <div className="flex h-full flex-col md:flex-row gap-4 overflow-x-hidden max-w-full">
         {/* Main Content */}
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex-1 flex flex-col overflow-hidden min-w-0 max-w-full">
           {/* Top Bar with Search and Categories */}
-          <div className="bg-card rounded-lg p-4 shadow-sm mb-4">
-            <div className="flex flex-col md:flex-row gap-4 items-center mb-4">
-              <div className="relative flex-1 w-full">
+          <div className="bg-card rounded-lg p-4 shadow-sm mb-4 max-w-full overflow-hidden">
+            <div className="flex flex-col md:flex-row gap-4 items-center mb-4 max-w-full overflow-hidden">
+              <div className="relative flex-1 w-full min-w-0">
                 <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                 <Input
                   ref={searchInputRef}
@@ -375,7 +470,7 @@ export default function SalesPage() {
                 )}
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-shrink-0">
                 <Badge variant="outline" className="flex gap-1 items-center">
                   <ShoppingCart className="h-3 w-3" />
                   <span>{cartItemCount} items</span>
@@ -391,7 +486,7 @@ export default function SalesPage() {
             </div>
 
             {/* Horizontal Category Navigation */}
-            <ScrollArea className="w-full whitespace-nowrap">
+            <ScrollArea className="w-full whitespace-nowrap max-w-full overflow-x-auto">
               <div className="flex space-x-2 pb-1">
                 <Button
                   variant={activeCategory === "all" ? "default" : "outline"}
@@ -460,7 +555,7 @@ export default function SalesPage() {
             >
               <div className="h-full overflow-auto p-1">
                 <motion.div
-                  className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4"
+                  className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 w-full max-w-full"
                   variants={containerVariants}
                   initial="hidden"
                   animate="show"
@@ -503,7 +598,7 @@ export default function SalesPage() {
                             {product.name}
                           </h3>
                           <p className="text-xs text-muted-foreground mb-1">
-                            {product.category.name}
+                            {product.category?.name || "Uncategorized"}
                           </p>
                           {product.sku && (
                             <p className="text-xs text-muted-foreground">
@@ -523,15 +618,10 @@ export default function SalesPage() {
                             variant="outline"
                             size="sm"
                             className="flex-1"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleQuickAdd(product);
-                            }}
+                            onClick={(e) => handleQuickAdd(e, product)}
                           >
                             <Plus className="h-4 w-4 mr-1" />
-                            {quickAddAmount
-                              ? `Add ${quickAddAmount}`
-                              : "Quick Add"}
+                            Quick Add
                           </Button>
                         </CardFooter>
                       </Card>
@@ -539,8 +629,20 @@ export default function SalesPage() {
                   ))}
 
                   {searchResults.length === 0 && (
-                    <div className="col-span-full flex justify-center items-center h-40">
-                      <p className="text-muted-foreground">No products found</p>
+                    <div className="col-span-full">
+                      <Empty>
+                        <EmptyHeader>
+                          <EmptyMedia variant="icon">
+                            <Package className="h-6 w-6" />
+                          </EmptyMedia>
+                          <EmptyTitle>No products found</EmptyTitle>
+                          <EmptyDescription>
+                            {searchQuery || activeCategory !== "all"
+                              ? "Try adjusting your search or filter criteria."
+                              : "No products available. Add products to get started."}
+                          </EmptyDescription>
+                        </EmptyHeader>
+                      </Empty>
                     </div>
                   )}
                 </motion.div>
@@ -553,12 +655,12 @@ export default function SalesPage() {
             >
               <div className="h-full overflow-auto p-1">
                 <motion.div
-                  className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4"
+                  className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 w-full max-w-full"
                   variants={containerVariants}
                   initial="hidden"
                   animate="show"
                 >
-                  {products
+                  {searchResults
                     .slice()
                     .sort((a, b) => b.stock - a.stock)
                     .slice(0, 10)
@@ -600,7 +702,7 @@ export default function SalesPage() {
                               {product.name}
                             </h3>
                             <p className="text-xs text-muted-foreground mb-1">
-                              {product.category.name}
+                              {product.category?.name || "Uncategorized"}
                             </p>
                             {product.sku && (
                               <p className="text-xs text-muted-foreground">
@@ -620,15 +722,10 @@ export default function SalesPage() {
                               variant="outline"
                               size="sm"
                               className="flex-1"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleQuickAdd(product);
-                              }}
+                              onClick={(e) => handleQuickAdd(e, product)}
                             >
                               <Plus className="h-4 w-4 mr-1" />
-                              {quickAddAmount
-                                ? `Add ${quickAddAmount}`
-                                : "Quick Add"}
+                              Quick Add
                             </Button>
                           </CardFooter>
                         </Card>
@@ -644,12 +741,12 @@ export default function SalesPage() {
             >
               <div className="h-full overflow-auto p-1">
                 <motion.div
-                  className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4"
+                  className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 w-full max-w-full"
                   variants={containerVariants}
                   initial="hidden"
                   animate="show"
                 >
-                  {products
+                  {searchResults
                     .slice()
                     .reverse()
                     .slice(0, 10)
@@ -691,7 +788,7 @@ export default function SalesPage() {
                               {product.name}
                             </h3>
                             <p className="text-xs text-muted-foreground mb-1">
-                              {product.category.name}
+                              {product.category?.name || "Uncategorized"}
                             </p>
                             {product.sku && (
                               <p className="text-xs text-muted-foreground">
@@ -711,15 +808,10 @@ export default function SalesPage() {
                               variant="outline"
                               size="sm"
                               className="flex-1"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleQuickAdd(product);
-                              }}
+                              onClick={(e) => handleQuickAdd(e, product)}
                             >
                               <Plus className="h-4 w-4 mr-1" />
-                              {quickAddAmount
-                                ? `Add ${quickAddAmount}`
-                                : "Quick Add"}
+                              Quick Add
                             </Button>
                           </CardFooter>
                         </Card>
@@ -734,15 +826,18 @@ export default function SalesPage() {
               className="flex-1 overflow-auto mt-0 data-[state=active]:flex-1"
             >
               <div className="h-full overflow-auto p-1">
-                <div className="flex flex-col items-center justify-center h-40 text-center">
-                  <BarChart className="h-12 w-12 text-muted-foreground mb-2" />
-                  <p className="text-muted-foreground">
-                    Favorites feature coming soon
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    You'll be able to mark products as favorites for quick
-                    access
-                  </p>
+                <div className="flex flex-col items-center justify-center h-full min-h-[300px]">
+                  <Empty>
+                    <EmptyHeader>
+                      <EmptyMedia variant="icon">
+                        <BarChart className="h-12 w-12 text-muted-foreground" />
+                      </EmptyMedia>
+                      <EmptyTitle>Favorites feature coming soon</EmptyTitle>
+                      <EmptyDescription>
+                        You'll be able to mark products as favorites for quick access
+                      </EmptyDescription>
+                    </EmptyHeader>
+                  </Empty>
                 </div>
               </div>
             </TabsContent>
@@ -750,7 +845,7 @@ export default function SalesPage() {
         </div>
 
         {/* Cart Section */}
-        <div className="w-full md:w-96 flex flex-col border rounded-lg bg-card shadow-sm">
+        <div className="w-full md:w-96 md:max-w-96 flex flex-col border rounded-lg bg-card shadow-sm flex-shrink-0">
           <div className="p-4 border-b flex justify-between items-center">
             <h2 className="text-lg font-semibold flex items-center">
               <ShoppingCart className="mr-2 h-5 w-5" />
@@ -768,7 +863,7 @@ export default function SalesPage() {
             )}
           </div>
 
-          <div className="flex-1 overflow-auto">
+          <div className="flex-1 overflow-y-auto overflow-x-hidden">
             <AnimatePresence>
               {cart.length > 0 ? (
                 <motion.div
@@ -796,17 +891,21 @@ export default function SalesPage() {
                         )}
                       </div>
 
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-medium text-sm truncate">
+                      <div className="flex-1 min-w-0 mr-3">
+                        <h3 className="font-medium text-sm truncate mb-1">
                           {item.product.name}
                         </h3>
-                        <p className="text-xs text-muted-foreground">
+                        <p className="text-xs text-muted-foreground mb-1">
                           {currencySymbol}
                           {item.product.price.toFixed(2)} each
                         </p>
+                        <p className="text-xs font-medium text-muted-foreground">
+                          {currencySymbol}
+                          {(item.product.price * item.quantity).toFixed(2)}
+                        </p>
                       </div>
 
-                      <div className="flex items-center gap-2 ml-2">
+                      <div className="flex items-center gap-1.5">
                         <Button
                           variant="outline"
                           size="icon"
@@ -844,12 +943,18 @@ export default function SalesPage() {
                   ))}
                 </motion.div>
               ) : (
-                <div className="flex flex-col items-center justify-center h-40 text-center p-4">
-                  <ShoppingCart className="h-12 w-12 text-muted-foreground mb-2" />
-                  <p className="text-muted-foreground">Your cart is empty</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Add products by clicking on them
-                  </p>
+                <div className="flex flex-col items-center justify-center h-full min-h-[300px] p-4">
+                  <Empty>
+                    <EmptyHeader>
+                      <EmptyMedia variant="icon">
+                        <ShoppingCart className="h-12 w-12 text-muted-foreground" />
+                      </EmptyMedia>
+                      <EmptyTitle>Your cart is empty</EmptyTitle>
+                      <EmptyDescription>
+                        Add products by clicking on them or using the Quick Add button
+                      </EmptyDescription>
+                    </EmptyHeader>
+                  </Empty>
                 </div>
               )}
             </AnimatePresence>
@@ -859,37 +964,44 @@ export default function SalesPage() {
             <div className="space-y-3 mb-4">
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Subtotal:</span>
-                <span>
+                <span className="font-medium">
                   {currencySymbol}
                   {cartSubtotal.toFixed(2)}
                 </span>
               </div>
 
               {discountValue > 0 && (
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">
-                    Discount{" "}
-                    {discountType === "percentage" ? `(${discountValue}%)` : ""}
-                    :
-                  </span>
-                  <span className="text-red-500">
-                    -{currencySymbol}
-                    {discountAmount.toFixed(2)}
-                  </span>
-                </div>
+                <>
+                  <Separator />
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">
+                      Discount{" "}
+                      {discountType === "percentage" ? `(${discountValue}%)` : ""}
+                      :
+                    </span>
+                    <span className="text-destructive font-medium">
+                      -{currencySymbol}
+                      {discountAmount.toFixed(2)}
+                    </span>
+                  </div>
+                </>
               )}
+
+              <Separator />
 
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Tax ({taxRate}%):</span>
-                <span>
+                <span className="font-medium">
                   {currencySymbol}
                   {taxAmount.toFixed(2)}
                 </span>
               </div>
 
-              <div className="flex justify-between font-medium">
-                <span>Total:</span>
-                <span className="text-lg">
+              <Separator />
+
+              <div className="flex justify-between items-center pt-1">
+                <span className="font-semibold text-base">Total:</span>
+                <span className="text-xl font-bold">
                   {currencySymbol}
                   {cartTotal.toFixed(2)}
                 </span>

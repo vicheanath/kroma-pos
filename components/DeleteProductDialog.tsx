@@ -1,14 +1,15 @@
 "use client";
 
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Package } from "lucide-react";
 import { Product } from "@/lib/db";
 
@@ -26,15 +27,15 @@ export default function DeleteProductDialog({
   handleDeleteProduct,
 }: DeleteProductDialogProps) {
   return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Delete Product</DialogTitle>
-          <DialogDescription>
+    <AlertDialog open={isOpen} onOpenChange={onOpenChange}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Delete Product</AlertDialogTitle>
+          <AlertDialogDescription>
             Are you sure you want to delete this product? This action cannot be
             undone.
-          </DialogDescription>
-        </DialogHeader>
+          </AlertDialogDescription>
+        </AlertDialogHeader>
 
         {currentProduct && (
           <div className="py-4">
@@ -53,7 +54,9 @@ export default function DeleteProductDialog({
               <div>
                 <p className="font-medium">{currentProduct.name}</p>
                 <p className="text-sm text-muted-foreground">
-                  {currentProduct.category}
+                  {typeof currentProduct.category === 'object' 
+                    ? currentProduct.category?.name 
+                    : currentProduct.category}
                 </p>
               </div>
             </div>
@@ -64,15 +67,18 @@ export default function DeleteProductDialog({
           </div>
         )}
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+        <AlertDialogFooter>
+          <AlertDialogCancel onClick={() => onOpenChange(false)}>
             Cancel
-          </Button>
-          <Button variant="destructive" onClick={handleDeleteProduct}>
+          </AlertDialogCancel>
+          <AlertDialogAction
+            onClick={handleDeleteProduct}
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+          >
             Delete
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }

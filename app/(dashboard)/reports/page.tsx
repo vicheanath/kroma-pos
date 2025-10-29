@@ -42,6 +42,15 @@ import {
   endOfMonth,
 } from "date-fns";
 import { useToast } from "@/components/ui/use-toast";
+import {
+  Empty,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+  EmptyDescription,
+} from "@/components/ui/empty";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Spinner } from "@/components/ui/spinner";
 import { salesApi } from "@/lib/db";
 
 export default function ReportsPage() {
@@ -382,7 +391,7 @@ export default function ReportsPage() {
   };
 
   // Add a function to handle printing individual invoices
-  const printInvoice = (sale) => {
+  const printInvoice = (sale: any) => {
     const printWindow = window.open("", "_blank");
     if (!printWindow) {
       toast({
@@ -445,7 +454,7 @@ export default function ReportsPage() {
             <tbody>
               ${sale.items
                 .map(
-                  (item) => `
+                  (item: any) => `
                 <tr>
                   <td>${item.name}</td>
                   <td>${item.quantity}</td>
@@ -604,23 +613,36 @@ export default function ReportsPage() {
             </CardHeader>
             <CardContent className="h-80">
               {isLoading ? (
-                <div className="flex items-center justify-center h-full">
-                  <p className="text-muted-foreground">Loading data...</p>
+                <div className="flex flex-col items-center justify-center h-full gap-2">
+                  <Spinner className="h-6 w-6" />
+                  <p className="text-sm text-muted-foreground">Loading data...</p>
                 </div>
+              ) : revenueData.length === 0 ? (
+                <Empty>
+                  <EmptyHeader>
+                    <EmptyMedia variant="icon">
+                      <BarChart className="h-6 w-6" />
+                    </EmptyMedia>
+                    <EmptyTitle>No data available</EmptyTitle>
+                    <EmptyDescription>
+                      No revenue data found for the selected date range.
+                    </EmptyDescription>
+                  </EmptyHeader>
+                </Empty>
               ) : (
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer width="100%" height={320}>
                   <LineChart data={revenueData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
-                    <XAxis dataKey="name" stroke="#8884d8" />
-                    <YAxis stroke="#8884d8" />
-                    <RechartsTooltip content={<ChartTooltip />} />
-                    <Line
-                      type="monotone"
-                      dataKey="sales"
-                      stroke="rgb(34, 197, 94)" // Tailwind green-500
-                      strokeWidth={3}
-                      dot={{ r: 5, fill: "rgb(34, 197, 94)" }} // Tailwind green-500
-                      activeDot={{ r: 8, fill: "rgb(22, 163, 74)" }} // Tailwind green-600
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
+                      <XAxis dataKey="name" stroke="#8884d8" />
+                      <YAxis stroke="#8884d8" />
+                      <RechartsTooltip content={<ChartTooltip />} />
+                      <Line
+                        type="monotone"
+                        dataKey="sales"
+                        stroke="rgb(34, 197, 94)" // Tailwind green-500
+                        strokeWidth={3}
+                        dot={{ r: 5, fill: "rgb(34, 197, 94)" }} // Tailwind green-500
+                        activeDot={{ r: 8, fill: "rgb(22, 163, 74)" }} // Tailwind green-600
                     />
                   </LineChart>
                 </ResponsiveContainer>
@@ -634,20 +656,33 @@ export default function ReportsPage() {
             </CardHeader>
             <CardContent className="h-80">
               {isLoading ? (
-                <div className="flex items-center justify-center h-full">
-                  <p className="text-muted-foreground">Loading data...</p>
+                <div className="flex flex-col items-center justify-center h-full gap-2">
+                  <Spinner className="h-6 w-6" />
+                  <p className="text-sm text-muted-foreground">Loading data...</p>
                 </div>
+              ) : topProductsData.length === 0 ? (
+                <Empty>
+                  <EmptyHeader>
+                    <EmptyMedia variant="icon">
+                      <BarChart className="h-6 w-6" />
+                    </EmptyMedia>
+                    <EmptyTitle>No data available</EmptyTitle>
+                    <EmptyDescription>
+                      No top products data found for the selected date range.
+                    </EmptyDescription>
+                  </EmptyHeader>
+                </Empty>
               ) : (
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer width="100%" height={320}>
                   <BarChart data={topProductsData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
-                    <XAxis dataKey="name" stroke="#8884d8" />
-                    <YAxis stroke="#8884d8" />
-                    <RechartsTooltip content={<ChartTooltip />} />
-                    <Bar
-                      dataKey="sales"
-                      fill="rgb(239, 68, 68)" // Tailwind red-500
-                      radius={[10, 10, 0, 0]}
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
+                      <XAxis dataKey="name" stroke="#8884d8" />
+                      <YAxis stroke="#8884d8" />
+                      <RechartsTooltip content={<ChartTooltip />} />
+                      <Bar
+                        dataKey="sales"
+                        fill="rgb(239, 68, 68)" // Tailwind red-500
+                        radius={[10, 10, 0, 0]}
                     />
                   </BarChart>
                 </ResponsiveContainer>
@@ -677,10 +712,13 @@ export default function ReportsPage() {
                 <TableBody>
                   {isLoading ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center py-8">
-                        <p className="text-muted-foreground">
-                          Loading sales data...
-                        </p>
+                      <TableCell colSpan={7} className="py-8">
+                        <div className="flex flex-col items-center justify-center gap-2">
+                          <Spinner className="h-6 w-6" />
+                          <p className="text-sm text-muted-foreground">
+                            Loading sales data...
+                          </p>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ) : filteredSales.length > 0 ? (
@@ -717,10 +755,18 @@ export default function ReportsPage() {
                     ))
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center py-8">
-                        <p className="text-muted-foreground">
-                          No sales data available for the selected period
-                        </p>
+                      <TableCell colSpan={7} className="py-8">
+                        <Empty>
+                          <EmptyHeader>
+                            <EmptyMedia variant="icon">
+                              <BarChart className="h-6 w-6" />
+                            </EmptyMedia>
+                            <EmptyTitle>No sales data available</EmptyTitle>
+                            <EmptyDescription>
+                              No sales data found for the selected period. Try adjusting your date range or filters.
+                            </EmptyDescription>
+                          </EmptyHeader>
+                        </Empty>
                       </TableCell>
                     </TableRow>
                   )}

@@ -7,6 +7,13 @@ import { useLicense } from "@/components/license-provider"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import {
+  Empty,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+  EmptyDescription,
+} from "@/components/ui/empty"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Check, Crown, X, AlertTriangle, Shield, ShieldCheck, ShieldAlert, RefreshCw } from "lucide-react"
@@ -348,7 +355,17 @@ export default function SubscriptionPage() {
                   ))}
                 </div>
               ) : (
-                <p className="text-sm text-muted-foreground">No sync history available</p>
+                <Empty>
+                  <EmptyHeader>
+                    <EmptyMedia variant="icon">
+                      <RefreshCw className="h-6 w-6" />
+                    </EmptyMedia>
+                    <EmptyTitle>No sync history available</EmptyTitle>
+                    <EmptyDescription>
+                      Sync history will appear here after you sync your data to the cloud.
+                    </EmptyDescription>
+                  </EmptyHeader>
+                </Empty>
               )}
             </CardContent>
           </Card>

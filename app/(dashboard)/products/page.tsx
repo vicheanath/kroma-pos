@@ -43,6 +43,13 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import {
+  Empty,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+  EmptyDescription,
+} from "@/components/ui/empty";
 import AddProductDialog from "@/components/AddProductDialog";
 import EditProductDialog from "@/components/EditProductDialog";
 import DeleteProductDialog from "@/components/DeleteProductDialog";
@@ -285,11 +292,20 @@ export default function ProductsPage() {
 
               {filteredProducts.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center py-8">
-                    <div className="flex flex-col items-center justify-center text-muted-foreground">
-                      <Package className="h-12 w-12 mb-2" />
-                      <p>No products found</p>
-                    </div>
+                  <TableCell colSpan={5} className="py-8">
+                    <Empty>
+                      <EmptyHeader>
+                        <EmptyMedia variant="icon">
+                          <Package className="h-6 w-6" />
+                        </EmptyMedia>
+                        <EmptyTitle>No products found</EmptyTitle>
+                        <EmptyDescription>
+                          {searchQuery || filterCategory !== "all"
+                            ? "Try adjusting your search or filter criteria."
+                            : "Get started by adding your first product."}
+                        </EmptyDescription>
+                      </EmptyHeader>
+                    </Empty>
                   </TableCell>
                 </TableRow>
               )}

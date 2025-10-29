@@ -11,6 +11,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import { Badge } from "@/components/ui/badge"
+import {
+  Empty,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+  EmptyDescription,
+} from "@/components/ui/empty"
 import { Plus, Edit, Trash2, Check, Calculator } from "lucide-react"
 
 export default function TaxSettingsPage() {
@@ -158,8 +165,18 @@ export default function TaxSettingsPage() {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center py-8">
-                    <p className="text-muted-foreground">No tax jurisdictions found</p>
+                  <TableCell colSpan={4} className="py-8">
+                    <Empty>
+                      <EmptyHeader>
+                        <EmptyMedia variant="icon">
+                          <Calculator className="h-6 w-6" />
+                        </EmptyMedia>
+                        <EmptyTitle>No tax jurisdictions found</EmptyTitle>
+                        <EmptyDescription>
+                          Create your first tax jurisdiction to start managing tax rules.
+                        </EmptyDescription>
+                      </EmptyHeader>
+                    </Empty>
                   </TableCell>
                 </TableRow>
               )}
@@ -245,8 +262,18 @@ export default function TaxSettingsPage() {
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-8">
-                      <p className="text-muted-foreground">No tax rules found</p>
+                    <TableCell colSpan={6} className="py-8">
+                      <Empty>
+                        <EmptyHeader>
+                          <EmptyMedia variant="icon">
+                            <Calculator className="h-6 w-6" />
+                          </EmptyMedia>
+                          <EmptyTitle>No tax rules found</EmptyTitle>
+                          <EmptyDescription>
+                            Add your first tax rule for this jurisdiction.
+                          </EmptyDescription>
+                        </EmptyHeader>
+                      </Empty>
                     </TableCell>
                   </TableRow>
                 )}
