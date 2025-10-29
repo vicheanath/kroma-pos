@@ -55,7 +55,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 overflow-hidden min-w-0">
       {/* License Status */}
       <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
         <Card className="bg-gradient-to-r from-indigo-500/10 to-purple-500/10 border-indigo-200 dark:border-indigo-800">
@@ -112,7 +112,7 @@ export default function DashboardPage() {
       )}
 
       <motion.div
-        className="grid gap-4 md:grid-cols-2 lg:grid-cols-4"
+        className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 min-w-0"
         variants={containerVariants}
         initial="hidden"
         animate="show"
@@ -196,7 +196,7 @@ export default function DashboardPage() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.4 }}
-        className="grid gap-4 md:grid-cols-2"
+        className="grid gap-4 md:grid-cols-2 min-w-0"
       >
         <Card className="col-span-1">
           <CardHeader>

@@ -87,8 +87,8 @@ export default function DiscountsPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
+    <div className="space-y-6 overflow-hidden min-w-0">
+      <div className="flex justify-between items-center min-w-0">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Discounts</h1>
           <p className="text-muted-foreground">
@@ -101,12 +101,13 @@ export default function DiscountsPage() {
         </Button>
       </div>
 
-      <Card>
+      <Card className="overflow-hidden">
         <CardHeader>
           <CardTitle>Active Discounts</CardTitle>
         </CardHeader>
-        <CardContent>
-          <Table>
+        <CardContent className="overflow-hidden min-w-0">
+          <div className="overflow-x-auto min-w-0">
+            <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Name</TableHead>
@@ -196,6 +197,7 @@ export default function DiscountsPage() {
               )}
             </TableBody>
           </Table>
+          </div>
         </CardContent>
       </Card>
 

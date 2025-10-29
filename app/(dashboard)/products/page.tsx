@@ -140,9 +140,9 @@ export default function ProductsPage() {
     show: { y: 0, opacity: 1 },
   };
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row gap-4 justify-between">
-        <div className="relative flex-1">
+    <div className="space-y-4 overflow-hidden min-w-0">
+      <div className="flex flex-col sm:flex-row gap-4 justify-between min-w-0">
+        <div className="relative flex-1 min-w-0">
           <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Search products..."
@@ -152,7 +152,7 @@ export default function ProductsPage() {
           />
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-shrink-0">
           <Select value={filterCategory} onValueChange={setFilterCategory}>
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Category" />
@@ -197,12 +197,13 @@ export default function ProductsPage() {
         </Alert>
       )}
 
-      <Card>
+      <Card className="overflow-hidden">
         <CardHeader>
           <CardTitle>Product Inventory</CardTitle>
         </CardHeader>
-        <CardContent>
-          <Table>
+        <CardContent className="overflow-hidden min-w-0">
+          <div className="overflow-x-auto min-w-0">
+            <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Product</TableHead>
@@ -311,6 +312,7 @@ export default function ProductsPage() {
               )}
             </TableBody>
           </Table>
+          </div>
         </CardContent>
         <CardFooter>
           <p className="text-sm text-muted-foreground">

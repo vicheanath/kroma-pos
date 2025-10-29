@@ -512,7 +512,7 @@ export default function ReportsPage() {
 
   return (
     <motion.div
-      className="space-y-6"
+      className="space-y-6 overflow-hidden min-w-0"
       variants={containerVariants}
       initial="hidden"
       animate="show"

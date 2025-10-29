@@ -443,12 +443,12 @@ export default function SalesPage() {
 
   return (
     <ReceiptSettingsProvider>
-      <div className="flex h-full flex-col md:flex-row gap-4 overflow-x-hidden max-w-full">
+      <div className="flex h-full flex-col md:flex-row gap-4 overflow-hidden min-w-0">
         {/* Main Content */}
-        <div className="flex-1 flex flex-col overflow-hidden min-w-0 max-w-full">
+        <div className="flex-1 flex flex-col overflow-hidden min-w-0">
           {/* Top Bar with Search and Categories */}
-          <div className="bg-card rounded-lg p-4 shadow-sm mb-4 max-w-full overflow-hidden">
-            <div className="flex flex-col md:flex-row gap-4 items-center mb-4 max-w-full overflow-hidden">
+          <div className="bg-card rounded-lg p-4 shadow-sm mb-4 overflow-hidden min-w-0">
+            <div className="flex flex-col md:flex-row gap-4 items-center mb-4 overflow-hidden min-w-0">
               <div className="relative flex-1 w-full min-w-0">
                 <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -486,7 +486,7 @@ export default function SalesPage() {
             </div>
 
             {/* Horizontal Category Navigation */}
-            <ScrollArea className="w-full whitespace-nowrap max-w-full overflow-x-auto">
+            <ScrollArea className="w-full whitespace-nowrap overflow-x-auto min-w-0">
               <div className="flex space-x-2 pb-1">
                 <Button
                   variant={activeCategory === "all" ? "default" : "outline"}
@@ -555,7 +555,7 @@ export default function SalesPage() {
             >
               <div className="h-full overflow-auto p-1">
                 <motion.div
-                  className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 w-full max-w-full"
+                  className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 w-full min-w-0"
                   variants={containerVariants}
                   initial="hidden"
                   animate="show"
@@ -655,7 +655,7 @@ export default function SalesPage() {
             >
               <div className="h-full overflow-auto p-1">
                 <motion.div
-                  className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 w-full max-w-full"
+                  className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 w-full min-w-0"
                   variants={containerVariants}
                   initial="hidden"
                   animate="show"
@@ -741,7 +741,7 @@ export default function SalesPage() {
             >
               <div className="h-full overflow-auto p-1">
                 <motion.div
-                  className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 w-full max-w-full"
+                  className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 w-full min-w-0"
                   variants={containerVariants}
                   initial="hidden"
                   animate="show"
@@ -845,7 +845,7 @@ export default function SalesPage() {
         </div>
 
         {/* Cart Section */}
-        <div className="w-full md:w-96 md:max-w-96 flex flex-col border rounded-lg bg-card shadow-sm flex-shrink-0">
+        <div className="w-full md:w-96 md:max-w-96 flex flex-col border rounded-lg bg-card shadow-sm flex-shrink-0 min-w-0">
           <div className="p-4 border-b flex justify-between items-center">
             <h2 className="text-lg font-semibold flex items-center">
               <ShoppingCart className="mr-2 h-5 w-5" />

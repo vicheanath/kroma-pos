@@ -21,8 +21,8 @@ export default function DashboardLayout({
             {/* Header content can go here */}
           </div>
         </header>
-        <div className={cn("flex flex-1 flex-col gap-4 p-4 md:p-8 overflow-x-hidden max-w-full")}>
-          <div className="w-full max-w-full overflow-x-hidden">
+        <div className={cn("flex flex-1 flex-col gap-4 p-4 md:p-8 overflow-hidden min-w-0")}>
+          <div className="w-full overflow-hidden min-w-0">
             {children}
           </div>
         </div>

@@ -8,6 +8,7 @@ import { DatabaseInitializer } from "@/components/database-initializer";
 import { PosDataProvider } from "@/components/pos-data-provider";
 import { Toaster } from "@/components/ui/toaster";
 import { DiscountProvider } from "@/components/discount-provider";
+import { AuthProvider } from "@/components/auth-provider";
 const inter = Inter({ subsets: ["latin"] });
 
 export default function RootLayout({
@@ -24,12 +25,14 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <DatabaseInitializer>
-            <PosDataProvider>
-              <DiscountProvider>{children}</DiscountProvider>
-            </PosDataProvider>
-            <Toaster />
-          </DatabaseInitializer>
+          <AuthProvider>
+            <DatabaseInitializer>
+              <PosDataProvider>
+                <DiscountProvider>{children}</DiscountProvider>
+              </PosDataProvider>
+              <Toaster />
+            </DatabaseInitializer>
+          </AuthProvider>
         </ThemeProvider>
       </body>
     </html>

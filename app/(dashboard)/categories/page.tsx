@@ -141,9 +141,9 @@ export default function CategoriesPage() {
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row gap-4 justify-between">
-        <div className="relative flex-1">
+    <div className="space-y-4 overflow-hidden min-w-0">
+      <div className="flex flex-col sm:flex-row gap-4 justify-between min-w-0">
+        <div className="relative flex-1 min-w-0">
           <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Search categories..."
@@ -153,18 +153,19 @@ export default function CategoriesPage() {
           />
         </div>
 
-        <Button onClick={() => setIsAddDialogOpen(true)}>
+        <Button onClick={() => setIsAddDialogOpen(true)} className="flex-shrink-0">
           <Plus className="mr-2 h-4 w-4" />
           Add Category
         </Button>
       </div>
 
-      <Card>
+      <Card className="overflow-hidden">
         <CardHeader>
           <CardTitle>Categories</CardTitle>
         </CardHeader>
-        <CardContent>
-          <Table>
+        <CardContent className="overflow-hidden min-w-0">
+          <div className="overflow-x-auto min-w-0">
+            <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Name</TableHead>
@@ -248,6 +249,7 @@ export default function CategoriesPage() {
               )}
             </TableBody>
           </Table>
+          </div>
         </CardContent>
       </Card>
 

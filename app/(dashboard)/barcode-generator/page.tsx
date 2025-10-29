@@ -407,17 +407,17 @@ export default function BarcodeDesignerPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <div>
+    <div className="space-y-6 overflow-hidden min-w-0">
+      <div className="min-w-0">
         <h1 className="text-2xl font-bold tracking-tight">Barcode Designer</h1>
         <p className="text-muted-foreground">
           Create and print barcodes for your products.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="md:col-span-1 space-y-6">
-          <Card>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 min-w-0">
+        <div className="md:col-span-1 space-y-6 min-w-0">
+          <Card className="overflow-hidden">
             <CardHeader>
               <CardTitle>Barcode Settings</CardTitle>
               <CardDescription>
@@ -516,7 +516,7 @@ export default function BarcodeDesignerPage() {
           </Card>
 
           {selectedTemplate.id === "custom" && (
-            <Card>
+            <Card className="overflow-hidden">
               <CardHeader>
                 <CardTitle>Custom Template</CardTitle>
                 <CardDescription>
@@ -681,16 +681,16 @@ export default function BarcodeDesignerPage() {
           )}
         </div>
 
-        <div className="md:col-span-2">
-          <Card className="h-full flex flex-col">
+        <div className="md:col-span-2 min-w-0">
+          <Card className="h-full flex flex-col overflow-hidden min-w-0">
             <CardHeader>
               <CardTitle>Select Products</CardTitle>
               <CardDescription>
                 Choose products to generate barcodes for.
               </CardDescription>
             </CardHeader>
-            <CardContent className="flex-grow overflow-hidden flex flex-col">
-              <div className="flex justify-between mb-4">
+            <CardContent className="flex-grow overflow-hidden flex flex-col min-w-0">
+              <div className="flex justify-between mb-4 min-w-0">
                 <Button variant="outline" size="sm" onClick={handleSelectAll}>
                   {selectedProducts.length === products.length ? (
                     <>
@@ -710,7 +710,7 @@ export default function BarcodeDesignerPage() {
                 </div>
               </div>
 
-              <div className="overflow-auto flex-grow border rounded-md">
+              <div className="overflow-auto flex-grow border rounded-md min-w-0">
                 <Table>
                   <TableHeader className="sticky top-0 bg-muted z-10">
                     <TableRow>
@@ -824,11 +824,11 @@ export default function BarcodeDesignerPage() {
               </div>
 
               {showPreview && selectedProducts.length > 0 && (
-                <div className="mt-6">
+                <div className="mt-6 min-w-0">
                   <h3 className="text-lg font-medium mb-2">Preview</h3>
-                  <div className="border rounded-md p-4 bg-muted/30 overflow-auto">
+                  <div className="border rounded-md p-4 bg-muted/30 overflow-auto min-w-0">
                     <div
-                      className="flex flex-wrap justify-start"
+                      className="flex flex-wrap justify-start min-w-0"
                       style={{
                         maxWidth: `${
                           getActiveTemplate().width *
