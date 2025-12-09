@@ -33,7 +33,7 @@ export default function ProductsPage() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [currentProduct, setCurrentProduct] = useState<Product | null>(null);
 
-  const handleAddProduct = (newProduct: Product) => {
+  const handleAddProduct = (newProduct: Omit<Product, "id" | "category">) => {
     addNewProduct(newProduct);
     setIsAddDialogOpen(false);
     setCurrentProduct(null);

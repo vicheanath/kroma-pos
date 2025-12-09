@@ -14,7 +14,13 @@ import {
   type StockMovement,
   type Product,
 } from "@/components/pos-data-provider";
-import { Empty } from "@/components/ui/empty";
+import {
+  Empty,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+  EmptyDescription,
+} from "@/components/ui/empty";
 import { History } from "lucide-react";
 
 interface StockMovementHistoryProps {
@@ -52,11 +58,17 @@ export function StockMovementHistory({
 
   if (movements.length === 0) {
     return (
-      <Empty
-        icon={History}
-        title="No stock movements"
-        description="Stock movement history will appear here."
-      />
+      <Empty>
+        <EmptyHeader>
+          <EmptyMedia variant="icon">
+            <History className="h-6 w-6" />
+          </EmptyMedia>
+          <EmptyTitle>No stock movements</EmptyTitle>
+          <EmptyDescription>
+            Stock movement history will appear here.
+          </EmptyDescription>
+        </EmptyHeader>
+      </Empty>
     );
   }
 

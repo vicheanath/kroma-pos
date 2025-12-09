@@ -1,4 +1,11 @@
 import Dexie from "dexie";
+import {
+  CURRENT_VERSION,
+  SCHEMA_VERSIONS,
+  getSchemaForVersion,
+  runMigration,
+  getMigrationDescription,
+} from "./db-migrations";
 
 // Define types
 export type Product = {
@@ -53,6 +60,8 @@ export type Sale = {
   customerPhone?: string;
   notes?: string;
   receiptNumber?: string;
+  employeeId?: string;
+  shiftId?: string;
 };
 
 export type ReceiptSettings = {
@@ -130,6 +139,51 @@ export type StockMovement = {
   date: Date;
 };
 
+export type Employee = {
+  id: string;
+  name: string;
+  email: string;
+  phone?: string;
+  role: "admin" | "manager" | "cashier" | "staff";
+  permissions?: string[];
+  isActive: boolean;
+  hireDate: Date;
+  password?: string; // Hashed password for authentication
+  notes?: string;
+};
+
+export type Shift = {
+  id: string;
+  employeeId: string;
+  startTime: Date;
+  endTime?: Date;
+  status:
+    | "scheduled"
+    | "active"
+    | "pending_completion"
+    | "completed"
+    | "cancelled";
+  notes?: string;
+};
+
+export type ClosingReport = {
+  id: string;
+  shiftId: string;
+  employeeId: string;
+  date: Date;
+  startCash: number;
+  endCash: number;
+  expectedCash: number;
+  actualCash: number;
+  cashDifference: number;
+  totalSales: number;
+  totalTransactions: number;
+  paymentMethods: Record<string, number>;
+  salesByEmployee?: Record<string, number>;
+  notes?: string;
+  createdAt: Date;
+};
+
 // Default settings
 export const DEFAULT_RECEIPT_SETTINGS: ReceiptSettings = {
   id: "receipt_settings",
@@ -179,32 +233,32 @@ class PosDatabase extends Dexie {
   settings!: Dexie.Table<AppSettings | ReceiptSettings, string>;
   discounts!: Dexie.Table<Discount, string>;
   stockMovements!: Dexie.Table<StockMovement, string>;
+  employees!: Dexie.Table<Employee, string>;
+  shifts!: Dexie.Table<Shift, string>;
+  closingReports!: Dexie.Table<ClosingReport, string>;
 
   constructor() {
     super("pos_system_db");
 
-    // Define schema for all tables
-    this.version(1).stores({
-      products:
-        "id, name, price, category, categoryId, barcode, stock, description, sku, cost, taxable, taxRate, tags, attributes, variations",
-      categories: "id, name, description, color, icon",
-      sales:
-        "id, items, total, subtotal, tax, discount, discountType, paymentMethod, date, customerName, customerEmail, customerPhone, notes, receiptNumber",
-      discounts:
-        "id, name, code, type, value, minOrderAmount, maxDiscount, startDate, endDate, isActive, appliesTo, categoryIds, productIds, usageLimit, usageCount",
-      settings: "id",
-    });
+    // Dynamically define all versions from the migration system
+    // This ensures consistency and makes it easier to add new versions
+    for (let version = 1; version <= CURRENT_VERSION; version++) {
+      const schema = getSchemaForVersion(version);
+      const description = getMigrationDescription(version);
 
-    // Version 2: Add stockMovements table
-    this.version(2)
-      .stores({
-        stockMovements:
-          "id, productId, type, quantity, previousStock, newStock, date",
-      })
-      .upgrade(async (tx) => {
-        // Migration logic if needed
-        console.log("Upgrading to version 2: Adding stockMovements table");
-      });
+      if (version === 1) {
+        // First version
+        this.version(version).stores(schema);
+      } else {
+        // Subsequent versions with migration logic
+        this.version(version)
+          .stores(schema)
+          .upgrade(async (tx) => {
+            console.log(`Upgrading to version ${version}: ${description}`);
+            await runMigration(version, tx);
+          });
+      }
+    }
 
     // Map table properties to their respective tables
     this.products = this.table("products");
@@ -213,6 +267,9 @@ class PosDatabase extends Dexie {
     this.settings = this.table("settings");
     this.discounts = this.table("discounts");
     this.stockMovements = this.table("stockMovements");
+    this.employees = this.table("employees");
+    this.shifts = this.table("shifts");
+    this.closingReports = this.table("closingReports");
   }
 
   // Initialize with default settings if needed
@@ -221,23 +278,25 @@ class PosDatabase extends Dexie {
       console.log("Initializing default settings...");
 
       // Check if tables exist and are accessible
-      const tableNames = [
-        "products",
-        "categories",
-        "sales",
-        "settings",
-        "discounts",
-        "stockMovements",
+      // Get expected tables from current schema version
+      const expectedTables = Object.keys(getSchemaForVersion(CURRENT_VERSION));
+      const versionMigratedTables = [
+        "stockMovements", // Added in version 2
+        "employees", // Added in version 3
+        "shifts", // Added in version 3
+        "closingReports", // Added in version 3
       ];
-      for (const tableName of tableNames) {
+
+      for (const tableName of expectedTables) {
         try {
           // Try to access each table
           const count = await this.table(tableName).count();
           console.log(`Table ${tableName} exists with ${count} records`);
         } catch (error) {
           console.error(`Error accessing table ${tableName}:`, error);
-          // Don't throw for stockMovements if it doesn't exist yet (version migration)
-          if (tableName !== "stockMovements") {
+          // Don't throw for version-migrated tables if they don't exist yet
+          // (they might not exist if database is at an older version)
+          if (!versionMigratedTables.includes(tableName)) {
             throw new Error(`Table ${tableName} is not accessible`);
           }
         }
@@ -304,9 +363,64 @@ export async function initializeDatabase(): Promise<boolean> {
       db.on("ready", () => console.log("Database is ready"));
     }
 
-    // Open the database
+    // Open the database and wait for it to be ready
     await db.open();
     console.log("Database opened successfully");
+    console.log(`Database version: ${db.verno} (expected: ${CURRENT_VERSION})`);
+
+    // Verify version is correct
+    if (db.verno !== CURRENT_VERSION) {
+      if (db.verno < CURRENT_VERSION) {
+        console.warn(
+          `Database version ${db.verno} is older than current version ${CURRENT_VERSION}. Upgrade should have occurred.`
+        );
+      } else {
+        console.warn(
+          `Database version ${db.verno} is newer than current code version ${CURRENT_VERSION}. Code may need updating.`
+        );
+      }
+    }
+
+    // Wait for database to be fully ready (especially after version upgrades)
+    // Check if database is open and latest tables are accessible
+    const latestTables = Object.keys(getSchemaForVersion(CURRENT_VERSION));
+    let retries = 0;
+    const maxRetries = 10;
+
+    while (retries < maxRetries) {
+      if (db.isOpen()) {
+        try {
+          // Try to access a table that should exist in the current version
+          // Use a table that exists in all versions (settings) first, then check version-specific tables
+          await db.settings.count();
+
+          // If we're at version 3+, check that new tables are accessible
+          if (db.verno >= 3) {
+            await db.employees.count();
+          }
+
+          console.log("Database tables are accessible");
+          break;
+        } catch (error: any) {
+          // Table might not exist yet or upgrade in progress
+          console.log(
+            `Waiting for database tables... (retry ${
+              retries + 1
+            }/${maxRetries})`
+          );
+          await new Promise((resolve) => setTimeout(resolve, 200));
+          retries++;
+        }
+      } else {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+        retries++;
+      }
+    }
+
+    // Verify database is open
+    if (!db.isOpen()) {
+      throw new Error("Database failed to open");
+    }
 
     // Initialize default settings
     const defaultsInitialized = await db.initializeDefaults();
@@ -316,6 +430,7 @@ export async function initializeDatabase(): Promise<boolean> {
       );
     }
 
+    console.log("Database initialization complete");
     return true;
   } catch (error) {
     console.error("Failed to initialize database:", error);
@@ -349,10 +464,16 @@ export async function initializeDatabase(): Promise<boolean> {
 }
 
 // Get database instance with safety checks
-function getDB(): PosDatabase {
+export function getDB(): PosDatabase {
   if (!db) {
     throw new Error(
       "Database not initialized. Call initializeDatabase() first."
+    );
+  }
+  // Ensure database is open
+  if (db.isOpen() === false) {
+    throw new Error(
+      "Database is not open. Please wait for initialization to complete."
     );
   }
   return db;
@@ -822,6 +943,8 @@ export const settingsApi = {
 // Helper function to check database health
 export async function checkDatabaseHealth(): Promise<{
   isHealthy: boolean;
+  version: number;
+  expectedVersion: number;
   tables: Record<string, number>;
   error?: string;
 }> {
@@ -829,28 +952,36 @@ export async function checkDatabaseHealth(): Promise<{
     if (!db) {
       return {
         isHealthy: false,
+        version: 0,
+        expectedVersion: CURRENT_VERSION,
         tables: {},
         error: "Database not initialized",
       };
     }
 
-    const tables = {
-      products: await db.products.count(),
-      categories: await db.categories.count(),
-      sales: await db.sales.count(),
-      settings: await db.settings.count(),
-      discounts: await db.discounts.count(),
-      stockMovements: await db.stockMovements.count(),
-    };
+    const expectedTables = Object.keys(getSchemaForVersion(CURRENT_VERSION));
+
+    const tables: Record<string, number> = {};
+    for (const tableName of expectedTables) {
+      try {
+        tables[tableName] = await db.table(tableName).count();
+      } catch (error) {
+        tables[tableName] = -1; // -1 indicates table doesn't exist or error
+      }
+    }
 
     return {
-      isHealthy: true,
+      isHealthy: db.verno === CURRENT_VERSION,
+      version: db.verno,
+      expectedVersion: CURRENT_VERSION,
       tables,
     };
   } catch (error) {
     console.error("Database health check failed:", error);
     return {
       isHealthy: false,
+      version: 0,
+      expectedVersion: CURRENT_VERSION,
       tables: {},
       error: error instanceof Error ? error.message : String(error),
     };
@@ -983,6 +1114,325 @@ export const stockMovementsApi = {
       await db.stockMovements.delete(id);
     } catch (error) {
       console.error(`Error deleting stock movement ${id}:`, error);
+      throw error;
+    }
+  },
+};
+
+// Employees API with error handling
+export const employeesApi = {
+  getAll: async (): Promise<Employee[]> => {
+    try {
+      const db = getDB();
+      return await db.employees.toArray();
+    } catch (error) {
+      console.error("Error getting employees:", error);
+      return [];
+    }
+  },
+
+  getById: async (id: string): Promise<Employee | undefined> => {
+    try {
+      const db = getDB();
+      return await db.employees.get(id);
+    } catch (error) {
+      console.error(`Error getting employee ${id}:`, error);
+      return undefined;
+    }
+  },
+
+  getActive: async (): Promise<Employee[]> => {
+    try {
+      const db = getDB();
+      const allEmployees = await db.employees.toArray();
+      return allEmployees.filter((e) => e.isActive === true);
+    } catch (error) {
+      console.error("Error getting active employees:", error);
+      return [];
+    }
+  },
+
+  getByRole: async (role: Employee["role"]): Promise<Employee[]> => {
+    try {
+      const db = getDB();
+      return await db.employees.where("role").equals(role).toArray();
+    } catch (error) {
+      console.error(`Error getting employees by role ${role}:`, error);
+      return [];
+    }
+  },
+
+  add: async (employee: Employee): Promise<string> => {
+    try {
+      const db = getDB();
+      await db.employees.add(employee);
+      return employee.id;
+    } catch (error) {
+      console.error("Error adding employee:", error);
+      throw error;
+    }
+  },
+
+  update: async (employee: Employee): Promise<void> => {
+    try {
+      const db = getDB();
+      await db.employees.update(employee.id, employee);
+    } catch (error) {
+      console.error(`Error updating employee ${employee.id}:`, error);
+      throw error;
+    }
+  },
+
+  delete: async (id: string): Promise<void> => {
+    try {
+      const db = getDB();
+      await db.employees.delete(id);
+    } catch (error) {
+      console.error(`Error deleting employee ${id}:`, error);
+      throw error;
+    }
+  },
+};
+
+// Shifts API with error handling
+export const shiftsApi = {
+  getAll: async (): Promise<Shift[]> => {
+    try {
+      const db = getDB();
+      const shifts = await db.shifts.toArray();
+      // Sort by startTime descending
+      return shifts.sort(
+        (a, b) =>
+          new Date(b.startTime).getTime() - new Date(a.startTime).getTime()
+      );
+    } catch (error) {
+      console.error("Error getting shifts:", error);
+      return [];
+    }
+  },
+
+  getById: async (id: string): Promise<Shift | undefined> => {
+    try {
+      const db = getDB();
+      return await db.shifts.get(id);
+    } catch (error) {
+      console.error(`Error getting shift ${id}:`, error);
+      return undefined;
+    }
+  },
+
+  getActiveShifts: async (): Promise<Shift[]> => {
+    try {
+      const db = getDB();
+      return await db.shifts.where("status").equals("active").toArray();
+    } catch (error) {
+      console.error("Error getting active shifts:", error);
+      return [];
+    }
+  },
+
+  getByEmployeeId: async (employeeId: string): Promise<Shift[]> => {
+    try {
+      const db = getDB();
+      const shifts = await db.shifts
+        .where("employeeId")
+        .equals(employeeId)
+        .toArray();
+      // Sort by startTime descending
+      return shifts.sort(
+        (a, b) =>
+          new Date(b.startTime).getTime() - new Date(a.startTime).getTime()
+      );
+    } catch (error) {
+      console.error(`Error getting shifts for employee ${employeeId}:`, error);
+      return [];
+    }
+  },
+
+  getByDateRange: async (startDate: Date, endDate: Date): Promise<Shift[]> => {
+    try {
+      const db = getDB();
+      const shifts = await db.shifts
+        .where("startTime")
+        .between(startDate, endDate, true, true)
+        .toArray();
+      // Sort by startTime descending
+      return shifts.sort(
+        (a, b) =>
+          new Date(b.startTime).getTime() - new Date(a.startTime).getTime()
+      );
+    } catch (error) {
+      console.error("Error getting shifts by date range:", error);
+      return [];
+    }
+  },
+
+  add: async (shift: Shift): Promise<string> => {
+    try {
+      const db = getDB();
+      // Ensure dates are proper Date objects
+      if (!(shift.startTime instanceof Date)) {
+        shift.startTime = new Date(shift.startTime);
+      }
+      if (shift.endTime && !(shift.endTime instanceof Date)) {
+        shift.endTime = new Date(shift.endTime);
+      }
+      await db.shifts.add(shift);
+      return shift.id;
+    } catch (error) {
+      console.error("Error adding shift:", error);
+      throw error;
+    }
+  },
+
+  update: async (shift: Shift): Promise<void> => {
+    try {
+      const db = getDB();
+      // Ensure dates are proper Date objects
+      if (!(shift.startTime instanceof Date)) {
+        shift.startTime = new Date(shift.startTime);
+      }
+      if (shift.endTime && !(shift.endTime instanceof Date)) {
+        shift.endTime = new Date(shift.endTime);
+      }
+      await db.shifts.update(shift.id, shift);
+    } catch (error) {
+      console.error(`Error updating shift ${shift.id}:`, error);
+      throw error;
+    }
+  },
+
+  delete: async (id: string): Promise<void> => {
+    try {
+      const db = getDB();
+      await db.shifts.delete(id);
+    } catch (error) {
+      console.error(`Error deleting shift ${id}:`, error);
+      throw error;
+    }
+  },
+};
+
+// Closing Reports API with error handling
+export const closingReportsApi = {
+  getAll: async (): Promise<ClosingReport[]> => {
+    try {
+      const db = getDB();
+      const reports = await db.closingReports.toArray();
+      // Sort by date descending
+      return reports.sort(
+        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+      );
+    } catch (error) {
+      console.error("Error getting closing reports:", error);
+      return [];
+    }
+  },
+
+  getById: async (id: string): Promise<ClosingReport | undefined> => {
+    try {
+      const db = getDB();
+      return await db.closingReports.get(id);
+    } catch (error) {
+      console.error(`Error getting closing report ${id}:`, error);
+      return undefined;
+    }
+  },
+
+  getByShiftId: async (shiftId: string): Promise<ClosingReport | undefined> => {
+    try {
+      const db = getDB();
+      return await db.closingReports.where("shiftId").equals(shiftId).first();
+    } catch (error) {
+      console.error(
+        `Error getting closing report for shift ${shiftId}:`,
+        error
+      );
+      return undefined;
+    }
+  },
+
+  getByEmployeeId: async (employeeId: string): Promise<ClosingReport[]> => {
+    try {
+      const db = getDB();
+      const reports = await db.closingReports
+        .where("employeeId")
+        .equals(employeeId)
+        .toArray();
+      // Sort by date descending
+      return reports.sort(
+        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+      );
+    } catch (error) {
+      console.error(
+        `Error getting closing reports for employee ${employeeId}:`,
+        error
+      );
+      return [];
+    }
+  },
+
+  getByDateRange: async (
+    startDate: Date,
+    endDate: Date
+  ): Promise<ClosingReport[]> => {
+    try {
+      const db = getDB();
+      const reports = await db.closingReports
+        .where("date")
+        .between(startDate, endDate, true, true)
+        .toArray();
+      // Sort by date descending
+      return reports.sort(
+        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+      );
+    } catch (error) {
+      console.error("Error getting closing reports by date range:", error);
+      return [];
+    }
+  },
+
+  add: async (report: ClosingReport): Promise<string> => {
+    try {
+      const db = getDB();
+      // Ensure dates are proper Date objects
+      if (!(report.date instanceof Date)) {
+        report.date = new Date(report.date);
+      }
+      if (!(report.createdAt instanceof Date)) {
+        report.createdAt = new Date(report.createdAt);
+      }
+      await db.closingReports.add(report);
+      return report.id;
+    } catch (error) {
+      console.error("Error adding closing report:", error);
+      throw error;
+    }
+  },
+
+  update: async (report: ClosingReport): Promise<void> => {
+    try {
+      const db = getDB();
+      // Ensure dates are proper Date objects
+      if (!(report.date instanceof Date)) {
+        report.date = new Date(report.date);
+      }
+      if (!(report.createdAt instanceof Date)) {
+        report.createdAt = new Date(report.createdAt);
+      }
+      await db.closingReports.update(report.id, report);
+    } catch (error) {
+      console.error(`Error updating closing report ${report.id}:`, error);
+      throw error;
+    }
+  },
+
+  delete: async (id: string): Promise<void> => {
+    try {
+      const db = getDB();
+      await db.closingReports.delete(id);
+    } catch (error) {
+      console.error(`Error deleting closing report ${id}:`, error);
       throw error;
     }
   },

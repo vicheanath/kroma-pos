@@ -29,9 +29,23 @@ import { useBarcodeScanner } from "./hooks/useBarcodeScanner";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useIsTablet } from "@/hooks/use-tablet";
 import { SidebarTrigger } from "@/components/ui/sidebar";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export default function SalesPage() {
-  const { products, categories, recordSale } = usePosData();
+  const {
+    products,
+    categories,
+    recordSale,
+    employees,
+    shifts,
+    getActiveShiftForEmployee,
+  } = usePosData();
   const { settings } = useReceiptSettings();
   const taxRate = settings?.taxRate || 10;
   const currencySymbol = settings?.currencySymbol || "$";
@@ -56,9 +70,22 @@ export default function SalesPage() {
   const [isNotesDialogOpen, setIsNotesDialogOpen] = useState(false);
   const [isCustomerDialogOpen, setIsCustomerDialogOpen] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>("");
   const { toast } = useToast();
   const isMobile = useIsMobile();
   const isTablet = useIsTablet();
+
+  // Get active shift for selected employee (or first active shift)
+  const activeShift = getActiveShiftForEmployee(
+    selectedEmployeeId || undefined
+  );
+
+  // Get all active shifts for employee selection
+  const activeShifts = shifts.filter((s) => s.status === "active");
+  const activeEmployeesWithShifts = activeShifts.map((shift) => {
+    const employee = employees.find((e) => e.id === shift.employeeId);
+    return { shift, employee: employee || null };
+  });
 
   // Use barcode scanner hook
   useBarcodeScanner({ products, cart, setCart });
@@ -233,6 +260,17 @@ export default function SalesPage() {
       return;
     }
 
+    // Validate active shift exists
+    if (!activeShift) {
+      toast({
+        title: "No Active Shift",
+        description:
+          "Please ensure an employee is clocked in before making a sale.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       // Prepare the sale data with the format expected by IndexedDB
       const saleData = {
@@ -254,7 +292,13 @@ export default function SalesPage() {
         notes: saleNotes.trim() || undefined,
       };
 
-      const sale = await recordSale(saleData);
+      // recordSale will automatically find active shift if not provided
+      // It will throw an error if no active shift exists
+      const sale = await recordSale(
+        saleData,
+        selectedEmployeeId || undefined,
+        activeShift?.id
+      );
 
       setCompletedSale(sale);
       setIsCheckoutOpen(false);
@@ -357,6 +401,51 @@ export default function SalesPage() {
             >
               <div className="flex items-center justify-between gap-3">
                 <SidebarTrigger className="h-9 w-9 shrink-0" />
+                {/* Active Shift Indicator / Employee Selector */}
+                {activeShifts.length > 0 ? (
+                  activeShifts.length === 1 ? (
+                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-green-500/10 border border-green-500/20">
+                      <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
+                      <span className="text-xs font-medium text-green-700 dark:text-green-400">
+                        {activeShifts[0].employeeId
+                          ? employees.find(
+                              (e) => e.id === activeShifts[0].employeeId
+                            )?.name || "Shift Active"
+                          : "Shift Active"}
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <Select
+                        value={selectedEmployeeId}
+                        onValueChange={setSelectedEmployeeId}
+                      >
+                        <SelectTrigger className="h-8 w-[180px] border-2 border-primary/20 bg-background">
+                          <SelectValue placeholder="Select Employee" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {activeEmployeesWithShifts.map(
+                            ({ shift, employee }) => (
+                              <SelectItem
+                                key={shift.id}
+                                value={shift.employeeId}
+                              >
+                                {employee?.name || "Unknown"} - Active
+                              </SelectItem>
+                            )
+                          )}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )
+                ) : (
+                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-destructive/10 border border-destructive/20">
+                    <div className="h-2 w-2 rounded-full bg-destructive" />
+                    <span className="text-xs font-medium text-destructive">
+                      No Active Shift
+                    </span>
+                  </div>
+                )}
                 <div className="flex items-center gap-3">
                   <div className="flex items-center gap-2">
                     <div className="p-2 bg-primary/20 rounded-lg">

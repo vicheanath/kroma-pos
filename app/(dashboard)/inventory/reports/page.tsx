@@ -19,7 +19,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Empty } from "@/components/ui/empty";
+import {
+  Empty,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+  EmptyDescription,
+} from "@/components/ui/empty";
 
 export default function InventoryReportsPage() {
   const { products } = usePosData();
@@ -95,11 +101,17 @@ export default function InventoryReportsPage() {
           </CardHeader>
           <CardContent>
             {lowStockProducts.length === 0 ? (
-              <Empty
-                icon={AlertTriangle}
-                title="No low stock items"
-                description="All products have adequate stock levels."
-              />
+              <Empty>
+                <EmptyHeader>
+                  <EmptyMedia variant="icon">
+                    <AlertTriangle className="h-6 w-6" />
+                  </EmptyMedia>
+                  <EmptyTitle>No low stock items</EmptyTitle>
+                  <EmptyDescription>
+                    All products have adequate stock levels.
+                  </EmptyDescription>
+                </EmptyHeader>
+              </Empty>
             ) : (
               <div className="rounded-md border">
                 <Table>
@@ -154,11 +166,17 @@ export default function InventoryReportsPage() {
           </CardHeader>
           <CardContent>
             {outOfStockProducts.length === 0 ? (
-              <Empty
-                icon={XCircle}
-                title="No out of stock items"
-                description="All products have stock available."
-              />
+              <Empty>
+                <EmptyHeader>
+                  <EmptyMedia variant="icon">
+                    <XCircle className="h-6 w-6" />
+                  </EmptyMedia>
+                  <EmptyTitle>No out of stock items</EmptyTitle>
+                  <EmptyDescription>
+                    All products have stock available.
+                  </EmptyDescription>
+                </EmptyHeader>
+              </Empty>
             ) : (
               <div className="rounded-md border">
                 <Table>

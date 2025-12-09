@@ -1,11 +1,8 @@
-
-
 <h1 align="center">
   <img src="./public/logo.png" alt="KromaPOS Logo" width="200"/>
   <h1>KromaPOS</h1>
   <p>Empowering Local Commerce — Anywhere, Anytime.</p>
 </h1>
-
 
 **KromaPOS** is an open-source, offline-first Point of Sale (POS) system built with **React** and **Electron**, designed to empower small and medium-sized businesses in Cambodia and beyond. With a sleek interface, modern tech stack, and local-first mindset, KromaPOS makes selling easy—whether you're online or completely offline.
 
@@ -48,6 +45,22 @@ git clone https://github.com/vicheanath/kroma-pos.git
 cd kroma-pos
 npm install
 ```
+
+### Environment Setup
+
+Create a `.env.local` file in the root directory with the following:
+
+```bash
+# NextAuth Secret (required)
+# Generate with: openssl rand -base64 32
+NEXTAUTH_SECRET=your-generated-secret-here
+
+# Google OAuth (optional, for cloud sync)
+GOOGLE_CLIENT_ID=your-google-client-id
+GOOGLE_CLIENT_SECRET=your-google-client-secret
+```
+
+**Note**: For development, a default secret is provided, but you should set `NEXTAUTH_SECRET` in production.
 
 # Screenshots
 

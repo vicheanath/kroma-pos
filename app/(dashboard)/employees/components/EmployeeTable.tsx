@@ -14,32 +14,34 @@ import {
   EmptyTitle,
   EmptyDescription,
 } from "@/components/ui/empty";
-import { Package } from "lucide-react";
-import { InventoryTableRow } from "./InventoryTableRow";
-import { type Product } from "@/components/pos-data-provider";
+import { Users } from "lucide-react";
+import { EmployeeTableRow } from "./EmployeeTableRow";
+import { type Employee } from "@/components/pos-data-provider";
 import { AnimatePresence } from "framer-motion";
 
-interface InventoryTableProps {
-  products: Product[];
-  onAdjust: (product: Product) => void;
+interface EmployeeTableProps {
+  employees: Employee[];
+  onEdit: (employee: Employee) => void;
+  onDelete: (employee: Employee) => void;
   itemVariants?: any;
 }
 
-export function InventoryTable({
-  products,
-  onAdjust,
+export function EmployeeTable({
+  employees,
+  onEdit,
+  onDelete,
   itemVariants,
-}: InventoryTableProps) {
-  if (products.length === 0) {
+}: EmployeeTableProps) {
+  if (employees.length === 0) {
     return (
       <Empty>
         <EmptyHeader>
           <EmptyMedia variant="icon">
-            <Package className="h-6 w-6" />
+            <Users className="h-6 w-6" />
           </EmptyMedia>
-          <EmptyTitle>No products found</EmptyTitle>
+          <EmptyTitle>No employees found</EmptyTitle>
           <EmptyDescription>
-            No products match your current filters.
+            No employees match your current filters.
           </EmptyDescription>
         </EmptyHeader>
       </Empty>
@@ -51,21 +53,21 @@ export function InventoryTable({
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="w-[300px]">Product</TableHead>
-            <TableHead>Category</TableHead>
-            <TableHead>Stock</TableHead>
-            <TableHead>Cost</TableHead>
-            <TableHead>Value</TableHead>
+            <TableHead className="w-[300px]">Employee</TableHead>
+            <TableHead>Role</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead>Hire Date</TableHead>
             <TableHead className="w-[70px]">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           <AnimatePresence mode="popLayout">
-            {products.map((product) => (
-              <InventoryTableRow
-                key={product.id}
-                product={product}
-                onAdjust={onAdjust}
+            {employees.map((employee) => (
+              <EmployeeTableRow
+                key={employee.id}
+                employee={employee}
+                onEdit={onEdit}
+                onDelete={onDelete}
                 variants={itemVariants}
               />
             ))}
