@@ -16,7 +16,7 @@ const roleBasedRoutes: Record<string, string[]> = {
   "/data-export": ["admin"],
 };
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Allow public routes
@@ -53,7 +53,7 @@ export async function middleware(request: NextRequest) {
 
   // For role-based routes, we'll let the client-side AuthGuard handle it
   // since we can't decode the JWT in Edge Runtime without BroadcastChannel
-  // The middleware just checks if user is authenticated (has session cookie)
+  // The proxy just checks if user is authenticated (has session cookie)
   // Role checks happen client-side via AuthGuard component
 
   return NextResponse.next();
