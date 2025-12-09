@@ -7,14 +7,17 @@ import {
   productsApi,
   categoriesApi,
   salesApi,
+  stockMovementsApi,
   type Product as ProductType,
   type Category as CategoryType,
   type Sale as SaleType,
+  type StockMovement as StockMovementType,
 } from "@/lib/db";
 
 export type Product = ProductType;
 export type Category = CategoryType;
 export type Sale = SaleType;
+export type StockMovement = StockMovementType;
 
 export type CartItem = {
   product: Product;
@@ -25,6 +28,7 @@ type PosDataContextType = {
   products: Product[];
   categories: Category[];
   sales: Sale[];
+  stockMovements: StockMovement[];
   addNewProduct: (product: Omit<Product, "id">) => Promise<void>;
   updateExistingProduct: (product: Product) => Promise<void>;
   removeProduct: (id: string) => Promise<void>;
@@ -32,6 +36,14 @@ type PosDataContextType = {
   updateExistingCategory: (category: Category) => Promise<void>;
   removeCategory: (id: string) => Promise<void>;
   recordSale: (sale: Omit<Sale, "id" | "date">) => Promise<Sale>;
+  adjustStock: (
+    productId: string,
+    quantity: number,
+    type: StockMovement["type"],
+    reason?: string,
+    notes?: string
+  ) => Promise<void>;
+  getStockMovements: (productId?: string) => StockMovement[];
   syncToCloud: () => Promise<void>;
   fetchData: () => Promise<void>;
 };
@@ -40,6 +52,7 @@ const PosDataContext = createContext<PosDataContextType>({
   products: [],
   categories: [],
   sales: [],
+  stockMovements: [],
   addNewProduct: async () => {},
   updateExistingProduct: async () => {},
   removeProduct: async () => {},
@@ -53,6 +66,8 @@ const PosDataContext = createContext<PosDataContextType>({
     paymentMethod: "",
     date: new Date(),
   }),
+  adjustStock: async () => {},
+  getStockMovements: () => [],
   syncToCloud: async () => {},
   fetchData: async () => {},
 });
@@ -61,6 +76,7 @@ export function PosDataProvider({ children }: { children: React.ReactNode }) {
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [sales, setSales] = useState<Sale[]>([]);
+  const [stockMovements, setStockMovements] = useState<StockMovement[]>([]);
   const { toast } = useToast();
 
   // Fetch all data
@@ -69,11 +85,13 @@ export function PosDataProvider({ children }: { children: React.ReactNode }) {
       const storedProducts = await productsApi.getAll();
       const storedCategories = await categoriesApi.getAll();
       const storedSales = await salesApi.getAll();
+      const storedStockMovements = await stockMovementsApi.getAll();
 
       // Ensure state updates only after all data is fetched
       setProducts(storedProducts);
       setCategories(storedCategories);
       setSales(storedSales);
+      setStockMovements(storedStockMovements);
 
       toast({
         title: "Data Loaded",
@@ -233,7 +251,43 @@ export function PosDataProvider({ children }: { children: React.ReactNode }) {
       };
 
       await salesApi.add(newSale);
+
+      // Create stock movements for each item in the sale
+      for (const item of saleData.items) {
+        // Fetch the latest product data from database to ensure accurate stock
+        const product = await productsApi.getById(item.productId);
+        if (product) {
+          const previousStock = product.stock;
+          const newStock = Math.max(0, previousStock - item.quantity);
+
+          // Update product stock
+          await productsApi.update({
+            ...product,
+            stock: newStock,
+          });
+
+          // Create stock movement record
+          const movement: StockMovement = {
+            id: crypto.randomUUID(),
+            productId: item.productId,
+            type: "sale",
+            quantity: -item.quantity, // Negative for removals
+            previousStock,
+            newStock,
+            reason: "Sale",
+            notes: `Sale ID: ${newSale.id}`,
+            date: new Date(),
+          };
+
+          await stockMovementsApi.add(movement);
+        }
+      }
+
+      // Refresh all data
+      setProducts(await productsApi.getAll());
       setSales(await salesApi.getAll());
+      setStockMovements(await stockMovementsApi.getAll());
+
       toast({
         title: "Sale Recorded",
         description: `Sale of $${newSale.total.toFixed(2)} has been recorded`,
@@ -251,6 +305,73 @@ export function PosDataProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // Adjust stock for a product
+  const adjustStock = async (
+    productId: string,
+    quantity: number,
+    type: StockMovement["type"] = "adjustment",
+    reason?: string,
+    notes?: string
+  ): Promise<void> => {
+    try {
+      // Fetch the latest product data from database
+      const product = await productsApi.getById(productId);
+      if (!product) {
+        throw new Error("Product not found");
+      }
+
+      const previousStock = product.stock;
+      // Calculate new stock (quantity can be positive or negative)
+      const newStock = Math.max(0, previousStock + quantity);
+
+      // Update product stock
+      await productsApi.update({
+        ...product,
+        stock: newStock,
+      });
+
+      // Create stock movement record
+      const movement: StockMovement = {
+        id: crypto.randomUUID(),
+        productId,
+        type,
+        quantity,
+        previousStock,
+        newStock,
+        reason: reason || "Manual adjustment",
+        notes,
+        date: new Date(),
+      };
+
+      await stockMovementsApi.add(movement);
+
+      // Refresh data
+      setProducts(await productsApi.getAll());
+      setStockMovements(await stockMovementsApi.getAll());
+
+      toast({
+        title: "Stock Adjusted",
+        description: `Stock for ${product.name} has been updated from ${previousStock} to ${newStock}`,
+      });
+    } catch (error) {
+      console.error("Failed to adjust stock:", error);
+      toast({
+        title: "Error",
+        description: "Failed to adjust stock",
+        variant: "destructive",
+      });
+      throw error;
+    }
+  };
+
+  // Get stock movements for a product or all products
+  const getStockMovements = (productId?: string): StockMovement[] => {
+    if (productId) {
+      return stockMovements.filter((m) => m.productId === productId);
+    }
+    return stockMovements;
+  };
+
   // Sync to cloud
   const syncToCloud = async () => {
     // Placeholder for cloud sync logic
@@ -266,6 +387,7 @@ export function PosDataProvider({ children }: { children: React.ReactNode }) {
         products,
         categories,
         sales,
+        stockMovements,
         addNewProduct,
         updateExistingProduct,
         removeProduct,
@@ -273,6 +395,8 @@ export function PosDataProvider({ children }: { children: React.ReactNode }) {
         updateExistingCategory,
         removeCategory,
         recordSale,
+        adjustStock,
+        getStockMovements,
         syncToCloud,
         fetchData,
       }}

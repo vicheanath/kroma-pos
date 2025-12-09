@@ -58,7 +58,7 @@ const ContextMenuContent = React.forwardRef<
   React.ElementRef<typeof ContextMenuPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof ContextMenuPrimitive.Content>
 >(({ className, ...props }, ref) => (
-  <ContextMenuPrimitive.Portal>
+  <ContextMenuPrimitive.Portal container={typeof document !== "undefined" ? document.body : undefined}>
     <ContextMenuPrimitive.Content
       ref={ref}
       className={cn(

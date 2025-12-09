@@ -117,6 +117,19 @@ export type AppSettings = {
   receiptSettings?: ReceiptSettings;
 };
 
+export type StockMovement = {
+  id: string;
+  productId: string;
+  type: "adjustment" | "sale" | "purchase" | "return" | "transfer";
+  quantity: number; // positive for additions, negative for removals
+  previousStock: number;
+  newStock: number;
+  reason?: string;
+  notes?: string;
+  userId?: string;
+  date: Date;
+};
+
 // Default settings
 export const DEFAULT_RECEIPT_SETTINGS: ReceiptSettings = {
   id: "receipt_settings",
@@ -164,7 +177,8 @@ class PosDatabase extends Dexie {
   categories!: Dexie.Table<Category, string>;
   sales!: Dexie.Table<Sale, string>;
   settings!: Dexie.Table<AppSettings | ReceiptSettings, string>;
-  discounts!: Dexie.Table<Discount, string>; // Added discounts table property
+  discounts!: Dexie.Table<Discount, string>;
+  stockMovements!: Dexie.Table<StockMovement, string>;
 
   constructor() {
     super("pos_system_db");
@@ -176,18 +190,29 @@ class PosDatabase extends Dexie {
       categories: "id, name, description, color, icon",
       sales:
         "id, items, total, subtotal, tax, discount, discountType, paymentMethod, date, customerName, customerEmail, customerPhone, notes, receiptNumber",
-      // Added schema for discounts table
       discounts:
         "id, name, code, type, value, minOrderAmount, maxDiscount, startDate, endDate, isActive, appliesTo, categoryIds, productIds, usageLimit, usageCount",
       settings: "id",
     });
+
+    // Version 2: Add stockMovements table
+    this.version(2)
+      .stores({
+        stockMovements:
+          "id, productId, type, quantity, previousStock, newStock, date",
+      })
+      .upgrade(async (tx) => {
+        // Migration logic if needed
+        console.log("Upgrading to version 2: Adding stockMovements table");
+      });
 
     // Map table properties to their respective tables
     this.products = this.table("products");
     this.categories = this.table("categories");
     this.sales = this.table("sales");
     this.settings = this.table("settings");
-    this.discounts = this.table("discounts"); // Mapped discounts table
+    this.discounts = this.table("discounts");
+    this.stockMovements = this.table("stockMovements");
   }
 
   // Initialize with default settings if needed
@@ -196,7 +221,14 @@ class PosDatabase extends Dexie {
       console.log("Initializing default settings...");
 
       // Check if tables exist and are accessible
-      const tableNames = ["products", "categories", "sales", "settings"];
+      const tableNames = [
+        "products",
+        "categories",
+        "sales",
+        "settings",
+        "discounts",
+        "stockMovements",
+      ];
       for (const tableName of tableNames) {
         try {
           // Try to access each table
@@ -204,7 +236,10 @@ class PosDatabase extends Dexie {
           console.log(`Table ${tableName} exists with ${count} records`);
         } catch (error) {
           console.error(`Error accessing table ${tableName}:`, error);
-          throw new Error(`Table ${tableName} is not accessible`);
+          // Don't throw for stockMovements if it doesn't exist yet (version migration)
+          if (tableName !== "stockMovements") {
+            throw new Error(`Table ${tableName} is not accessible`);
+          }
         }
       }
 
@@ -804,6 +839,8 @@ export async function checkDatabaseHealth(): Promise<{
       categories: await db.categories.count(),
       sales: await db.sales.count(),
       settings: await db.settings.count(),
+      discounts: await db.discounts.count(),
+      stockMovements: await db.stockMovements.count(),
     };
 
     return {
@@ -841,6 +878,115 @@ export async function resetDatabase(): Promise<boolean> {
     return false;
   }
 }
+
+// Stock Movements API with error handling
+export const stockMovementsApi = {
+  getAll: async (): Promise<StockMovement[]> => {
+    try {
+      const db = getDB();
+      const movements = await db.stockMovements.toArray();
+      // Sort by date descending
+      return movements.sort(
+        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+      );
+    } catch (error) {
+      console.error("Error getting stock movements:", error);
+      return [];
+    }
+  },
+
+  getById: async (id: string): Promise<StockMovement | undefined> => {
+    try {
+      const db = getDB();
+      return await db.stockMovements.get(id);
+    } catch (error) {
+      console.error(`Error getting stock movement ${id}:`, error);
+      return undefined;
+    }
+  },
+
+  getByProductId: async (productId: string): Promise<StockMovement[]> => {
+    try {
+      const db = getDB();
+      const movements = await db.stockMovements
+        .where("productId")
+        .equals(productId)
+        .toArray();
+      // Sort by date descending
+      return movements.sort(
+        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+      );
+    } catch (error) {
+      console.error(
+        `Error getting stock movements for product ${productId}:`,
+        error
+      );
+      return [];
+    }
+  },
+
+  getByDateRange: async (
+    startDate: Date,
+    endDate: Date
+  ): Promise<StockMovement[]> => {
+    try {
+      const db = getDB();
+      const movements = await db.stockMovements
+        .where("date")
+        .between(startDate, endDate, true, true)
+        .toArray();
+      // Sort by date descending
+      return movements.sort(
+        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+      );
+    } catch (error) {
+      console.error("Error getting stock movements by date range:", error);
+      return [];
+    }
+  },
+
+  getByType: async (type: StockMovement["type"]): Promise<StockMovement[]> => {
+    try {
+      const db = getDB();
+      const movements = await db.stockMovements
+        .where("type")
+        .equals(type)
+        .toArray();
+      // Sort by date descending
+      return movements.sort(
+        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+      );
+    } catch (error) {
+      console.error(`Error getting stock movements by type ${type}:`, error);
+      return [];
+    }
+  },
+
+  add: async (movement: StockMovement): Promise<string> => {
+    try {
+      const db = getDB();
+      // Ensure date is a proper Date object
+      if (!(movement.date instanceof Date)) {
+        movement.date = new Date(movement.date);
+      }
+      await db.stockMovements.add(movement);
+      return movement.id;
+    } catch (error) {
+      console.error("Error adding stock movement:", error);
+      throw error;
+    }
+  },
+
+  delete: async (id: string): Promise<void> => {
+    try {
+      const db = getDB();
+      await db.stockMovements.delete(id);
+    } catch (error) {
+      console.error(`Error deleting stock movement ${id}:`, error);
+      throw error;
+    }
+  },
+};
 
 // Helper function to convert file to base64
 export const fileToBase64 = (file: File): Promise<string> => {

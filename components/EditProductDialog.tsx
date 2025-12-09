@@ -8,7 +8,6 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -21,10 +20,22 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { ImageUpload } from "@/components/image-upload";
 import { Category, Product } from "@/lib/db";
-import { useForm, Controller, useFieldArray } from "react-hook-form";
+import { useForm, useFieldArray } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import { X, Plus } from "lucide-react";
 
 const productSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -73,27 +84,44 @@ export default function EditProductDialog({
     currentProduct?.attributes || {}
   );
 
-  const {
-    control,
-    register,
-    handleSubmit,
-    setValue,
-    formState: { errors },
-  } = useForm<ProductFormValues>({
+  const form = useForm<ProductFormValues>({
     resolver: zodResolver(productSchema),
     defaultValues: {
-      ...currentProduct,
-      tags: currentProduct?.tags || [],
-      variations: currentProduct?.variations || [],
+      name: "",
+      price: 0,
+      stock: 0,
+      categoryId: "",
+      barcode: "",
+      description: "",
+      image: "",
+      sku: "",
+      cost: 0,
+      taxable: false,
+      taxRate: 0,
+      tags: [],
+      attributes: {},
+      variations: [],
     },
   });
+
+  // Update form when currentProduct changes
+  useEffect(() => {
+    if (currentProduct) {
+      form.reset({
+        ...currentProduct,
+        tags: currentProduct.tags || [],
+        variations: currentProduct.variations || [],
+      });
+      setAttributes(currentProduct.attributes || {});
+    }
+  }, [currentProduct, form]);
 
   const {
     fields: variationFields,
     append: addVariation,
     remove: removeVariation,
   } = useFieldArray({
-    control,
+    control: form.control,
     name: "variations",
   });
 
@@ -118,330 +146,488 @@ export default function EditProductDialog({
     handleEditProduct(finalData);
   };
 
+  if (!currentProduct) {
+    return null;
+  }
+
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-5xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Edit Product</DialogTitle>
-          <DialogDescription>Update the product details.</DialogDescription>
+          <DialogTitle className="text-2xl">Edit Product</DialogTitle>
+          <DialogDescription>
+            Update the product details. All required fields are marked with an
+            asterisk.
+          </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="grid gap-4 py-4">
-          {/* Name */}
-          <div className="grid gap-2">
-            <Label htmlFor="name">Name</Label>
-            <Input id="name" placeholder="Product name" {...register("name")} />
-            {errors.name && (
-              <p className="text-red-500 text-sm">{errors.name.message}</p>
-            )}
-          </div>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <Tabs defaultValue="basic" className="w-full">
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="basic">Basic Info</TabsTrigger>
+                <TabsTrigger value="details">Details</TabsTrigger>
+                <TabsTrigger value="advanced">Advanced</TabsTrigger>
+              </TabsList>
 
-          {/* Price and Stock */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="grid gap-2">
-              <Label htmlFor="price">Price</Label>
-              <Input
-                id="price"
-                type="number"
-                placeholder="0.00"
-                {...register("price", { valueAsNumber: true })}
-              />
-              {errors.price && (
-                <p className="text-red-500 text-sm">{errors.price.message}</p>
-              )}
-            </div>
+              <TabsContent value="basic" className="space-y-4 mt-4">
+                <FormField
+                  control={form.control}
+                  name="name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>
+                        Product Name <span className="text-destructive">*</span>
+                      </FormLabel>
+                      <FormControl>
+                        <Input placeholder="Enter product name" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-            <div className="grid gap-2">
-              <Label htmlFor="stock">Stock</Label>
-              <Input
-                id="stock"
-                type="number"
-                placeholder="0"
-                {...register("stock", { valueAsNumber: true })}
-              />
-              {errors.stock && (
-                <p className="text-red-500 text-sm">{errors.stock.message}</p>
-              )}
-            </div>
-          </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="price"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>
+                          Price <span className="text-destructive">*</span>
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            placeholder="0.00"
+                            {...field}
+                            onChange={(e) =>
+                              field.onChange(parseFloat(e.target.value) || 0)
+                            }
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
-          {/* Category */}
-          <div className="grid gap-2">
-            <Label htmlFor="category">Category</Label>
-            <Controller
-              name="categoryId"
-              control={control}
-              render={({ field }) => (
-                <Select value={field.value} onValueChange={field.onChange}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categories.map((category) => (
-                      <SelectItem key={category.id} value={category.id}>
-                        {category.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-            />
-            {errors.categoryId && (
-              <p className="text-red-500 text-sm">
-                {errors.categoryId.message}
-              </p>
-            )}
-          </div>
+                  <FormField
+                    control={form.control}
+                    name="stock"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>
+                          Stock <span className="text-destructive">*</span>
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            placeholder="0"
+                            {...field}
+                            onChange={(e) =>
+                              field.onChange(parseInt(e.target.value) || 0)
+                            }
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
 
-          {/* Barcode */}
-          <div className="grid gap-2">
-            <Label htmlFor="barcode">Barcode (Optional)</Label>
-            <Input
-              id="barcode"
-              placeholder="Barcode"
-              {...register("barcode")}
-            />
-          </div>
+                <FormField
+                  control={form.control}
+                  name="categoryId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>
+                        Category <span className="text-destructive">*</span>
+                      </FormLabel>
+                      <Select
+                        onValueChange={field.onChange}
+                        value={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select a category" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {categories.map((category) => (
+                            <SelectItem key={category.id} value={category.id}>
+                              {category.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-          {/* Description */}
-          <div className="grid gap-2">
-            <Label htmlFor="description">Description (Optional)</Label>
-            <Textarea
-              id="description"
-              placeholder="Product description"
-              {...register("description")}
-            />
-          </div>
+                <FormField
+                  control={form.control}
+                  name="barcode"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Barcode</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Barcode" {...field} />
+                      </FormControl>
+                      <FormDescription>
+                        Optional. Product barcode identifier.
+                      </FormDescription>
+                    </FormItem>
+                  )}
+                />
 
-          {/* SKU */}
-          <div className="grid gap-2">
-            <Label htmlFor="sku">SKU (Optional)</Label>
-            <Input id="sku" placeholder="SKU" {...register("sku")} />
-          </div>
-
-          {/* Cost */}
-          <div className="grid gap-2">
-            <Label htmlFor="cost">Cost (Optional)</Label>
-            <Input
-              id="cost"
-              type="number"
-              placeholder="0.00"
-              {...register("cost", { valueAsNumber: true })}
-            />
-          </div>
-
-          {/* Taxable */}
-          <div className="grid gap-2">
-            <Label htmlFor="taxable">Taxable</Label>
-            <Controller
-              name="taxable"
-              control={control}
-              render={({ field }) => (
-                <Select
-                  value={field.value ? "true" : "false"}
-                  onValueChange={(value) => field.onChange(value === "true")}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select taxable status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="true">Yes</SelectItem>
-                    <SelectItem value="false">No</SelectItem>
-                  </SelectContent>
-                </Select>
-              )}
-            />
-          </div>
-
-          {/* Tax Rate */}
-          <div className="grid gap-2">
-            <Label htmlFor="taxRate">Tax Rate (Optional)</Label>
-            <Input
-              id="taxRate"
-              type="number"
-              placeholder="0.00"
-              {...register("taxRate", { valueAsNumber: true })}
-            />
-          </div>
-
-          {/* Tags */}
-          <div className="grid gap-2">
-            <Label htmlFor="tags">Tags (Optional)</Label>
-            <Input
-              id="tags"
-              placeholder="Comma-separated tags"
-              {...register("tags", {
-                setValueAs: (value) =>
-                  typeof value === "string"
-                    ? value.split(",").map((tag) => tag.trim())
-                    : [],
-              })}
-            />
-          </div>
-
-          {/* Variations */}
-          <div className="grid gap-2">
-            <Label>Variations (Optional)</Label>
-            <div className="overflow-x-auto">
-              <table className="table-fixed w-full border-collapse border border-gray-300">
-                <thead>
-                  <tr className="bg-gray-100">
-                    <th className="w-1/4 px-4 py-2 text-left font-bold border border-gray-300">
-                      Name
-                    </th>
-                    <th className="w-1/4 px-4 py-2 text-left font-bold border border-gray-300">
-                      Price
-                    </th>
-                    <th className="w-1/4 px-4 py-2 text-left font-bold border border-gray-300">
-                      Stock
-                    </th>
-                    <th className="w-1/4 px-4 py-2 text-left font-bold border border-gray-300">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {variationFields.map((field, index) => (
-                    <tr key={field.id} className="hover:bg-gray-50">
-                      <td className="px-4 py-2 border border-gray-300">
-                        <input
-                          type="text"
-                          placeholder="Variation Name"
-                          className="w-full px-2 py-1 border border-gray-300 rounded"
-                          {...register(`variations.${index}.name`)}
+                <FormField
+                  control={form.control}
+                  name="description"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Description</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          placeholder="Product description"
+                          className="min-h-[100px]"
+                          {...field}
                         />
-                      </td>
-                      <td className="px-4 py-2 border border-gray-300">
-                        <input
+                      </FormControl>
+                      <FormDescription>
+                        Optional. Describe your product in detail.
+                      </FormDescription>
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="image"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Product Image</FormLabel>
+                      <FormControl>
+                        <ImageUpload
+                          value={field.value || ""}
+                          onChange={field.onChange}
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        Upload a product image (optional).
+                      </FormDescription>
+                    </FormItem>
+                  )}
+                />
+              </TabsContent>
+
+              <TabsContent value="details" className="space-y-4 mt-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="sku"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>SKU</FormLabel>
+                        <FormControl>
+                          <Input placeholder="SKU" {...field} />
+                        </FormControl>
+                        <FormDescription>
+                          Stock Keeping Unit (optional).
+                        </FormDescription>
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="cost"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Cost</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            placeholder="0.00"
+                            {...field}
+                            onChange={(e) =>
+                              field.onChange(parseFloat(e.target.value) || 0)
+                            }
+                          />
+                        </FormControl>
+                        <FormDescription>
+                          Product cost price (optional).
+                        </FormDescription>
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <FormField
+                  control={form.control}
+                  name="taxable"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Taxable</FormLabel>
+                      <Select
+                        onValueChange={(value) =>
+                          field.onChange(value === "true")
+                        }
+                        value={field.value ? "true" : "false"}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select taxable status" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="true">Yes</SelectItem>
+                          <SelectItem value="false">No</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormDescription>
+                        Whether this product is taxable.
+                      </FormDescription>
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="taxRate"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Tax Rate (%)</FormLabel>
+                      <FormControl>
+                        <Input
                           type="number"
-                          placeholder="Price"
-                          className="w-full px-2 py-1 border border-gray-300 rounded"
-                          {...register(`variations.${index}.price`, {
-                            valueAsNumber: true,
-                          })}
+                          step="0.01"
+                          placeholder="0.00"
+                          {...field}
+                          onChange={(e) =>
+                            field.onChange(parseFloat(e.target.value) || 0)
+                          }
                         />
-                      </td>
-                      <td className="px-4 py-2 border border-gray-300">
-                        <input
-                          type="number"
-                          placeholder="Stock"
-                          className="w-full px-2 py-1 border border-gray-300 rounded"
-                          {...register(`variations.${index}.stock`, {
-                            valueAsNumber: true,
-                          })}
+                      </FormControl>
+                      <FormDescription>
+                        Tax rate percentage (optional).
+                      </FormDescription>
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="tags"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Tags</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="Comma-separated tags (e.g., tag1, tag2, tag3)"
+                          {...field}
+                          value={
+                            Array.isArray(field.value)
+                              ? field.value.join(", ")
+                              : ""
+                          }
+                          onChange={(e) => {
+                            const tags = e.target.value
+                              .split(",")
+                              .map((tag) => tag.trim())
+                              .filter((tag) => tag.length > 0);
+                            field.onChange(tags);
+                          }}
                         />
-                      </td>
-                      <td className="px-4 py-2 border border-gray-300">
-                        <button
+                      </FormControl>
+                      <FormDescription>
+                        Add tags separated by commas (optional).
+                      </FormDescription>
+                      {field.value && field.value.length > 0 && (
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          {field.value.map((tag, index) => (
+                            <Badge key={index} variant="secondary">
+                              {tag}
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
+                    </FormItem>
+                  )}
+                />
+              </TabsContent>
+
+              <TabsContent value="advanced" className="space-y-4 mt-4">
+                <FormField
+                  control={form.control}
+                  name="variations"
+                  render={() => (
+                    <FormItem>
+                      <FormLabel>Product Variations</FormLabel>
+                      <FormDescription>
+                        Add different variations of this product (e.g., sizes,
+                        colors).
+                      </FormDescription>
+                      <div className="space-y-4">
+                        {variationFields.map((field, index) => (
+                          <div
+                            key={field.id}
+                            className="flex gap-4 p-4 border rounded-lg bg-muted/50"
+                          >
+                            <FormField
+                              control={form.control}
+                              name={`variations.${index}.name`}
+                              render={({ field }) => (
+                                <FormItem className="flex-1">
+                                  <FormLabel>Variation Name</FormLabel>
+                                  <FormControl>
+                                    <Input
+                                      placeholder="e.g., Small, Red"
+                                      {...field}
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                            <FormField
+                              control={form.control}
+                              name={`variations.${index}.price`}
+                              render={({ field }) => (
+                                <FormItem className="w-32">
+                                  <FormLabel>Price</FormLabel>
+                                  <FormControl>
+                                    <Input
+                                      type="number"
+                                      step="0.01"
+                                      placeholder="0.00"
+                                      {...field}
+                                      onChange={(e) =>
+                                        field.onChange(
+                                          parseFloat(e.target.value) || 0
+                                        )
+                                      }
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                            <FormField
+                              control={form.control}
+                              name={`variations.${index}.stock`}
+                              render={({ field }) => (
+                                <FormItem className="w-32">
+                                  <FormLabel>Stock</FormLabel>
+                                  <FormControl>
+                                    <Input
+                                      type="number"
+                                      placeholder="0"
+                                      {...field}
+                                      onChange={(e) =>
+                                        field.onChange(
+                                          parseInt(e.target.value) || 0
+                                        )
+                                      }
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="mt-8"
+                              onClick={() => removeVariation(index)}
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        ))}
+                        <Button
                           type="button"
-                          className="px-2 py-1 text-red-500 border border-red-500 rounded hover:bg-red-100"
-                          onClick={() => removeVariation(index)}
+                          variant="outline"
+                          onClick={() =>
+                            addVariation({
+                              id: Date.now().toString(),
+                              name: "",
+                              price: 0,
+                              stock: 0,
+                            })
+                          }
+                          className="w-full"
                         >
-                          Remove
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <button
-              type="button"
-              className="mt-2 px-4 py-2 text-white bg-blue-500 rounded hover:bg-blue-600"
-              onClick={() =>
-                addVariation({
-                  id: Date.now().toString(),
-                  name: "",
-                  price: 0,
-                  stock: 0,
-                })
-              }
-            >
-              Add Variation
-            </button>
-          </div>
+                          <Plus className="mr-2 h-4 w-4" />
+                          Add Variation
+                        </Button>
+                      </div>
+                    </FormItem>
+                  )}
+                />
 
-          {/* Attributes */}
-          <div className="grid gap-2">
-            <Label>Attributes (Optional)</Label>
-            <div className="overflow-x-auto">
-              <table className="table-fixed w-full border-collapse border border-gray-300">
-                <thead>
-                  <tr className="bg-gray-100">
-                    <th className="w-1/3 px-4 py-2 text-left font-bold border border-gray-300">
-                      Key
-                    </th>
-                    <th className="w-1/3 px-4 py-2 text-left font-bold border border-gray-300">
-                      Value
-                    </th>
-                    <th className="w-1/3 px-4 py-2 text-left font-bold border border-gray-300">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {Object.entries(attributes).map(([key, value]) => (
-                    <tr key={key} className="hover:bg-gray-50">
-                      <td className="px-4 py-2 border border-gray-300">
-                        <input
-                          type="text"
-                          value={key}
+                <FormItem>
+                  <FormLabel>Custom Attributes</FormLabel>
+                  <FormDescription>
+                    Add custom key-value pairs for additional product
+                    information.
+                  </FormDescription>
+                  <div className="space-y-3">
+                    {Object.entries(attributes).map(([key, value]) => (
+                      <div
+                        key={key}
+                        className="flex gap-2 p-3 border rounded-lg bg-muted/50"
+                      >
+                        <Input
+                          value={key.replace("key-", "")}
                           readOnly
-                          className="w-full px-2 py-1 border border-gray-300 rounded bg-gray-100"
+                          className="flex-1 bg-background"
                         />
-                      </td>
-                      <td className="px-4 py-2 border border-gray-300">
-                        <input
-                          type="text"
+                        <Input
                           value={value}
                           onChange={(e) => updateAttribute(key, e.target.value)}
-                          className="w-full px-2 py-1 border border-gray-300 rounded"
+                          placeholder="Value"
+                          className="flex-1"
                         />
-                      </td>
-                      <td className="px-4 py-2 border border-gray-300">
-                        <button
+                        <Button
                           type="button"
-                          className="px-2 py-1 text-red-500 border border-red-500 rounded hover:bg-red-100"
+                          variant="ghost"
+                          size="icon"
                           onClick={() => removeAttribute(key)}
                         >
-                          Remove
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <button
-              type="button"
-              className="mt-2 px-4 py-2 text-white bg-blue-500 rounded hover:bg-blue-600"
-              onClick={addAttribute}
-            >
-              Add Attribute
-            </button>
-          </div>
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={addAttribute}
+                      className="w-full"
+                    >
+                      <Plus className="mr-2 h-4 w-4" />
+                      Add Attribute
+                    </Button>
+                  </div>
+                </FormItem>
+              </TabsContent>
+            </Tabs>
 
-          {/* Image Upload */}
-          <Controller
-            name="image"
-            control={control}
-            render={({ field }) => (
-              <ImageUpload
-                value={field.value || ""}
-                onChange={field.onChange}
-              />
-            )}
-          />
-        </form>
-
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
-          </Button>
-          <Button type="submit" onClick={handleSubmit(onSubmit)}>
-            Save Changes
-          </Button>
-        </DialogFooter>
+            <DialogFooter className="gap-2 sm:gap-0">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => onOpenChange(false)}
+              >
+                Cancel
+              </Button>
+              <Button type="submit">Save Changes</Button>
+            </DialogFooter>
+          </form>
+        </Form>
       </DialogContent>
     </Dialog>
   );

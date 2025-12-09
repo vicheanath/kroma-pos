@@ -1,44 +1,16 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useState, useEffect } from "react";
+import { motion } from "framer-motion";
 import {
   usePosData,
   type Product,
   type CartItem,
   type Sale,
 } from "@/components/pos-data-provider";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardFooter } from "@/components/ui/card";
-
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
-import {
-  Search,
-  ShoppingCart,
-  Plus,
-  Minus,
-  Trash2,
-  Package,
-  X,
-  Tag,
-  Percent,
-  ArrowRight,
-  User,
-  FileText,
-  BarChart,
-} from "lucide-react";
+import { Tag, ShoppingCart } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
-import {
-  Empty,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-  EmptyDescription,
-} from "@/components/ui/empty";
 import { InvoicePrint } from "@/components/invoice-print";
 import {
   ReceiptSettingsProvider,
@@ -48,6 +20,15 @@ import DiscountDialog from "@/components/DiscountDialog";
 import NotesDialog from "@/components/NotesDialog";
 import CustomerDialog from "@/components/CustomerDialog";
 import CheckoutDialog from "@/components/CheckoutDialog";
+import { SearchBar } from "./components/SearchBar";
+import { CategoryFilter } from "./components/CategoryFilter";
+import { ProductTabs } from "./components/ProductTabs";
+import { Cart } from "./components/Cart";
+import { MobileCartButton } from "./components/MobileCartButton";
+import { useBarcodeScanner } from "./hooks/useBarcodeScanner";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { useIsTablet } from "@/hooks/use-tablet";
+import { SidebarTrigger } from "@/components/ui/sidebar";
 
 export default function SalesPage() {
   const { products, categories, recordSale } = usePosData();
@@ -74,12 +55,18 @@ export default function SalesPage() {
   const [discountValue, setDiscountValue] = useState(0);
   const [isNotesDialogOpen, setIsNotesDialogOpen] = useState(false);
   const [isCustomerDialogOpen, setIsCustomerDialogOpen] = useState(false);
+  const [isCartOpen, setIsCartOpen] = useState(false);
   const { toast } = useToast();
-  const searchInputRef = useRef<HTMLInputElement>(null);
+  const isMobile = useIsMobile();
+  const isTablet = useIsTablet();
+
+  // Use barcode scanner hook
+  useBarcodeScanner({ products, cart, setCart });
 
   // Filter products based on search query and category
   useEffect(() => {
-    let filtered = products;
+    // Always update searchResults when products change
+    let filtered = [...products];
 
     // Apply category filter
     if (activeCategory !== "all") {
@@ -94,7 +81,8 @@ export default function SalesPage() {
       filtered = filtered.filter(
         (product) =>
           product.name.toLowerCase().includes(query) ||
-          (product.category?.name && product.category.name.toLowerCase().includes(query)) ||
+          (product.category?.name &&
+            product.category.name.toLowerCase().includes(query)) ||
           (product.barcode && product.barcode.toLowerCase().includes(query)) ||
           (product.sku && product.sku.toLowerCase().includes(query)) ||
           (product.description &&
@@ -102,15 +90,19 @@ export default function SalesPage() {
       );
     }
 
+    // Always set searchResults, even if empty (to show empty state)
     setSearchResults(filtered);
   }, [searchQuery, activeCategory, products]);
 
-  // Initialize searchResults with all products on first load
+  // Debug: Log when products or searchResults change
   useEffect(() => {
-    if (products.length > 0 && searchResults.length === 0 && searchQuery === "" && activeCategory === "all") {
-      setSearchResults(products);
-    }
-  }, [products, searchResults.length, searchQuery, activeCategory]);
+    console.log(
+      "Products changed:",
+      products.length,
+      "Search results:",
+      searchResults.length
+    );
+  }, [products, searchResults]);
 
   // Calculate cart subtotal
   const cartSubtotal = cart.reduce(
@@ -175,6 +167,11 @@ export default function SalesPage() {
       title: "Added to Cart",
       description: `${quantity}x ${product.name} added to cart.`,
     });
+
+    // Auto-open cart drawer on mobile when item is added
+    if (isMobile && cart.length === 0) {
+      setIsCartOpen(true);
+    }
   };
 
   // Update cart item quantity
@@ -285,93 +282,6 @@ export default function SalesPage() {
     addToCart(product, 1);
   };
 
-  // Barcode scanning - detect rapid input of numbers/characters
-  const [barcodeBuffer, setBarcodeBuffer] = useState("");
-  const barcodeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-  useEffect(() => {
-    const handleBarcodeInput = (e: KeyboardEvent) => {
-      // Ignore if typing in an input field
-      if (
-        e.target instanceof HTMLInputElement ||
-        e.target instanceof HTMLTextAreaElement
-      ) {
-        return;
-      }
-
-      // Check if Enter is pressed (barcode scanners often send Enter after the code)
-      if (e.key === "Enter" && barcodeBuffer.length > 0) {
-        e.preventDefault();
-        const trimmedBarcode = barcodeBuffer.trim();
-        const product = products.find((p) => p.barcode === trimmedBarcode);
-        if (product) {
-          // Add to cart directly
-          setCart((prevCart) => {
-            const existingItem = prevCart.find(
-              (item) => item.product.id === product.id
-            );
-
-            if (existingItem) {
-              if (existingItem.quantity + 1 > product.stock) {
-                toast({
-                  title: "Stock Limit Reached",
-                  description: `Only ${product.stock} units available.`,
-                  variant: "destructive",
-                });
-                return prevCart;
-              }
-              return prevCart.map((item) =>
-                item.product.id === product.id
-                  ? { ...item, quantity: item.quantity + 1 }
-                  : item
-              );
-            } else {
-              return [...prevCart, { product, quantity: 1 }];
-            }
-          });
-          toast({
-            title: "Product Scanned",
-            description: `${product.name} added to cart.`,
-          });
-        } else {
-          toast({
-            title: "Barcode Not Found",
-            description: `No product found with barcode: ${trimmedBarcode}`,
-            variant: "destructive",
-          });
-        }
-        setBarcodeBuffer("");
-        if (barcodeTimeoutRef.current) {
-          clearTimeout(barcodeTimeoutRef.current);
-          barcodeTimeoutRef.current = null;
-        }
-        return;
-      }
-
-      // Accumulate characters (barcode scanners input very quickly)
-      if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
-        setBarcodeBuffer((prev) => prev + e.key);
-
-        // Clear buffer after 100ms of no input (barcode scanners are very fast)
-        if (barcodeTimeoutRef.current) {
-          clearTimeout(barcodeTimeoutRef.current);
-        }
-        barcodeTimeoutRef.current = setTimeout(() => {
-          setBarcodeBuffer("");
-        }, 100);
-      }
-    };
-
-    window.addEventListener("keydown", handleBarcodeInput);
-    return () => {
-      window.removeEventListener("keydown", handleBarcodeInput);
-      if (barcodeTimeoutRef.current) {
-        clearTimeout(barcodeTimeoutRef.current);
-      }
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [barcodeBuffer, products, toast]);
-
   // Apply discount
   const applyDiscount = () => {
     setIsDiscountDialogOpen(false);
@@ -412,19 +322,6 @@ export default function SalesPage() {
     }
   };
 
-  // Focus search input when pressing '/'
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "/" && searchInputRef.current) {
-        e.preventDefault();
-        searchInputRef.current.focus();
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, []);
-
   // Animation variants
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -443,615 +340,159 @@ export default function SalesPage() {
 
   return (
     <ReceiptSettingsProvider>
-      <div className="flex h-full flex-col md:flex-row gap-4 overflow-hidden min-w-0">
+      <div
+        className={`flex h-full w-full ${isMobile ? "flex-col" : "flex-row"} ${
+          isTablet ? "gap-3" : "gap-4"
+        } overflow-hidden min-w-0 p-4 md:p-6`}
+      >
         {/* Main Content */}
         <div className="flex-1 flex flex-col overflow-hidden min-w-0">
           {/* Top Bar with Search and Categories */}
-          <div className="bg-card rounded-lg p-4 shadow-sm mb-4 overflow-hidden min-w-0">
-            <div className="flex flex-col md:flex-row gap-4 items-center mb-4 overflow-hidden min-w-0">
-              <div className="relative flex-1 w-full min-w-0">
-                <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                <Input
-                  ref={searchInputRef}
-                  placeholder="Search products by name, SKU, barcode... (Press '/' to focus)"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9"
-                />
-                {searchQuery && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="absolute right-1 top-1 h-8 w-8"
-                    onClick={() => setSearchQuery("")}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                )}
-              </div>
-
-              <div className="flex items-center gap-2 flex-shrink-0">
-                <Badge variant="outline" className="flex gap-1 items-center">
-                  <ShoppingCart className="h-3 w-3" />
-                  <span>{cartItemCount} items</span>
-                </Badge>
-                <Badge variant="outline" className="flex gap-1 items-center">
-                  <Tag className="h-3 w-3" />
-                  <span>
-                    {currencySymbol}
-                    {cartTotal.toFixed(2)}
-                  </span>
-                </Badge>
+          <div className="space-y-3 mb-4">
+            {/* Cart Summary Bar with Sidebar Toggle */}
+            <div
+              className={`bg-gradient-to-r from-primary/10 via-primary/5 to-primary/10 rounded-lg ${
+                isTablet ? "p-3" : "p-4"
+              } border border-primary/20 shadow-sm`}
+            >
+              <div className="flex items-center justify-between gap-3">
+                <SidebarTrigger className="h-9 w-9 shrink-0" />
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2">
+                    <div className="p-2 bg-primary/20 rounded-lg">
+                      <ShoppingCart className="h-4 w-4 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">
+                        Cart Items
+                      </p>
+                      <p className="text-base font-semibold text-foreground">
+                        {cartItemCount} {cartItemCount === 1 ? "item" : "items"}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="h-8 w-px bg-border" />
+                  <div className="flex items-center gap-2">
+                    <div className="p-2 bg-primary/20 rounded-lg">
+                      <Tag className="h-4 w-4 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Total</p>
+                      <p className="text-lg font-bold text-primary">
+                        {currencySymbol}
+                        {cartTotal.toFixed(2)}
+                      </p>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
 
-            {/* Horizontal Category Navigation */}
-            <ScrollArea className="w-full whitespace-nowrap overflow-x-auto min-w-0">
-              <div className="flex space-x-2 pb-1">
-                <Button
-                  variant={activeCategory === "all" ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setActiveCategory("all")}
-                  className="rounded-full"
-                >
-                  All Products
-                </Button>
+            {/* Search and Filter Section */}
+            <div
+              className={`bg-card rounded-lg ${
+                isTablet ? "p-4" : "p-5"
+              } shadow-sm border border-border`}
+            >
+              <SearchBar
+                searchQuery={searchQuery}
+                onSearchChange={setSearchQuery}
+                isTablet={isTablet}
+              />
 
-                {categories.map((category) => (
-                  <Button
-                    key={category.id}
-                    variant={
-                      activeCategory === category.id ? "default" : "outline"
-                    }
-                    size="sm"
-                    onClick={() => setActiveCategory(category.id)}
-                    className="rounded-full"
-                    style={
-                      category.color
-                        ? {
-                            backgroundColor:
-                              activeCategory === category.id
-                                ? category.color
-                                : "transparent",
-                            color:
-                              activeCategory === category.id
-                                ? "white"
-                                : category.color,
-                            borderColor: category.color,
-                          }
-                        : {}
-                    }
-                  >
-                    {category.icon && (
-                      <span className="mr-1">{category.icon}</span>
-                    )}
-                    {category.name}
-                  </Button>
-                ))}
+              {/* Horizontal Category Navigation */}
+              <div className="mt-4">
+                <CategoryFilter
+                  categories={categories}
+                  activeCategory={activeCategory}
+                  onCategoryChange={setActiveCategory}
+                  isTablet={isTablet}
+                />
               </div>
-              <ScrollBar orientation="horizontal" />
-            </ScrollArea>
+            </div>
           </div>
 
           {/* Products Grid with Tabs */}
-          <Tabs
-            defaultValue="all"
-            value={activeTab}
-            onValueChange={setActiveTab}
-            className="flex-1 overflow-hidden flex flex-col"
-          >
-            <div className="px-1">
-              <TabsList className="grid grid-cols-4 h-10 mb-4">
-                <TabsTrigger value="all">All</TabsTrigger>
-                <TabsTrigger value="popular">Popular</TabsTrigger>
-                <TabsTrigger value="recent">Recent</TabsTrigger>
-                <TabsTrigger value="favorites">Favorites</TabsTrigger>
-              </TabsList>
-            </div>
-
-            <TabsContent
-              value="all"
-              className="flex-1 overflow-auto mt-0 data-[state=active]:flex-1"
-            >
-              <div className="h-full overflow-auto p-1">
-                <motion.div
-                  className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 w-full min-w-0"
-                  variants={containerVariants}
-                  initial="hidden"
-                  animate="show"
-                >
-                  {searchResults.map((product) => (
-                    <motion.div key={product.id} variants={itemVariants}>
-                      <Card
-                        className="overflow-hidden h-full flex flex-col cursor-pointer hover:shadow-md transition-shadow"
-                        onClick={() => addToCart(product)}
-                      >
-                        <div className="aspect-square bg-muted flex items-center justify-center overflow-hidden relative">
-                          {product.image ? (
-                            <img
-                              src={product.image || "/placeholder.svg"}
-                              alt={product.name}
-                              className="h-full w-full object-cover"
-                            />
-                          ) : (
-                            <Package className="h-12 w-12 text-muted-foreground" />
-                          )}
-
-                          {product.stock <= 5 && (
-                            <Badge
-                              variant={
-                                product.stock === 0
-                                  ? "destructive"
-                                  : "secondary"
-                              }
-                              className="absolute top-2 right-2"
-                            >
-                              {product.stock === 0
-                                ? "Out of stock"
-                                : `${product.stock} left`}
-                            </Badge>
-                          )}
-                        </div>
-
-                        <CardContent className="p-3 flex-1 flex flex-col">
-                          <h3 className="font-medium text-sm line-clamp-1">
-                            {product.name}
-                          </h3>
-                          <p className="text-xs text-muted-foreground mb-1">
-                            {product.category?.name || "Uncategorized"}
-                          </p>
-                          {product.sku && (
-                            <p className="text-xs text-muted-foreground">
-                              SKU: {product.sku}
-                            </p>
-                          )}
-                          <div className="mt-auto">
-                            <p className="text-lg font-bold">
-                              {currencySymbol}
-                              {product.price.toFixed(2)}
-                            </p>
-                          </div>
-                        </CardContent>
-
-                        <CardFooter className="p-3 pt-0 flex gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="flex-1"
-                            onClick={(e) => handleQuickAdd(e, product)}
-                          >
-                            <Plus className="h-4 w-4 mr-1" />
-                            Quick Add
-                          </Button>
-                        </CardFooter>
-                      </Card>
-                    </motion.div>
-                  ))}
-
-                  {searchResults.length === 0 && (
-                    <div className="col-span-full">
-                      <Empty>
-                        <EmptyHeader>
-                          <EmptyMedia variant="icon">
-                            <Package className="h-6 w-6" />
-                          </EmptyMedia>
-                          <EmptyTitle>No products found</EmptyTitle>
-                          <EmptyDescription>
-                            {searchQuery || activeCategory !== "all"
-                              ? "Try adjusting your search or filter criteria."
-                              : "No products available. Add products to get started."}
-                          </EmptyDescription>
-                        </EmptyHeader>
-                      </Empty>
-                    </div>
-                  )}
-                </motion.div>
-              </div>
-            </TabsContent>
-
-            <TabsContent
-              value="popular"
-              className="flex-1 overflow-auto mt-0 data-[state=active]:flex-1"
-            >
-              <div className="h-full overflow-auto p-1">
-                <motion.div
-                  className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 w-full min-w-0"
-                  variants={containerVariants}
-                  initial="hidden"
-                  animate="show"
-                >
-                  {searchResults
-                    .slice()
-                    .sort((a, b) => b.stock - a.stock)
-                    .slice(0, 10)
-                    .map((product) => (
-                      <motion.div key={product.id} variants={itemVariants}>
-                        <Card
-                          className="overflow-hidden h-full flex flex-col cursor-pointer hover:shadow-md transition-shadow"
-                          onClick={() => addToCart(product)}
-                        >
-                          <div className="aspect-square bg-muted flex items-center justify-center overflow-hidden relative">
-                            {product.image ? (
-                              <img
-                                src={product.image || "/placeholder.svg"}
-                                alt={product.name}
-                                className="h-full w-full object-cover"
-                              />
-                            ) : (
-                              <Package className="h-12 w-12 text-muted-foreground" />
-                            )}
-
-                            {product.stock <= 5 && (
-                              <Badge
-                                variant={
-                                  product.stock === 0
-                                    ? "destructive"
-                                    : "secondary"
-                                }
-                                className="absolute top-2 right-2"
-                              >
-                                {product.stock === 0
-                                  ? "Out of stock"
-                                  : `${product.stock} left`}
-                              </Badge>
-                            )}
-                          </div>
-
-                          <CardContent className="p-3 flex-1 flex flex-col">
-                            <h3 className="font-medium text-sm line-clamp-1">
-                              {product.name}
-                            </h3>
-                            <p className="text-xs text-muted-foreground mb-1">
-                              {product.category?.name || "Uncategorized"}
-                            </p>
-                            {product.sku && (
-                              <p className="text-xs text-muted-foreground">
-                                SKU: {product.sku}
-                              </p>
-                            )}
-                            <div className="mt-auto">
-                              <p className="text-lg font-bold">
-                                {currencySymbol}
-                                {product.price.toFixed(2)}
-                              </p>
-                            </div>
-                          </CardContent>
-
-                          <CardFooter className="p-3 pt-0 flex gap-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="flex-1"
-                              onClick={(e) => handleQuickAdd(e, product)}
-                            >
-                              <Plus className="h-4 w-4 mr-1" />
-                              Quick Add
-                            </Button>
-                          </CardFooter>
-                        </Card>
-                      </motion.div>
-                    ))}
-                </motion.div>
-              </div>
-            </TabsContent>
-
-            <TabsContent
-              value="recent"
-              className="flex-1 overflow-auto mt-0 data-[state=active]:flex-1"
-            >
-              <div className="h-full overflow-auto p-1">
-                <motion.div
-                  className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 w-full min-w-0"
-                  variants={containerVariants}
-                  initial="hidden"
-                  animate="show"
-                >
-                  {searchResults
-                    .slice()
-                    .reverse()
-                    .slice(0, 10)
-                    .map((product) => (
-                      <motion.div key={product.id} variants={itemVariants}>
-                        <Card
-                          className="overflow-hidden h-full flex flex-col cursor-pointer hover:shadow-md transition-shadow"
-                          onClick={() => addToCart(product)}
-                        >
-                          <div className="aspect-square bg-muted flex items-center justify-center overflow-hidden relative">
-                            {product.image ? (
-                              <img
-                                src={product.image || "/placeholder.svg"}
-                                alt={product.name}
-                                className="h-full w-full object-cover"
-                              />
-                            ) : (
-                              <Package className="h-12 w-12 text-muted-foreground" />
-                            )}
-
-                            {product.stock <= 5 && (
-                              <Badge
-                                variant={
-                                  product.stock === 0
-                                    ? "destructive"
-                                    : "secondary"
-                                }
-                                className="absolute top-2 right-2"
-                              >
-                                {product.stock === 0
-                                  ? "Out of stock"
-                                  : `${product.stock} left`}
-                              </Badge>
-                            )}
-                          </div>
-
-                          <CardContent className="p-3 flex-1 flex flex-col">
-                            <h3 className="font-medium text-sm line-clamp-1">
-                              {product.name}
-                            </h3>
-                            <p className="text-xs text-muted-foreground mb-1">
-                              {product.category?.name || "Uncategorized"}
-                            </p>
-                            {product.sku && (
-                              <p className="text-xs text-muted-foreground">
-                                SKU: {product.sku}
-                              </p>
-                            )}
-                            <div className="mt-auto">
-                              <p className="text-lg font-bold">
-                                {currencySymbol}
-                                {product.price.toFixed(2)}
-                              </p>
-                            </div>
-                          </CardContent>
-
-                          <CardFooter className="p-3 pt-0 flex gap-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="flex-1"
-                              onClick={(e) => handleQuickAdd(e, product)}
-                            >
-                              <Plus className="h-4 w-4 mr-1" />
-                              Quick Add
-                            </Button>
-                          </CardFooter>
-                        </Card>
-                      </motion.div>
-                    ))}
-                </motion.div>
-              </div>
-            </TabsContent>
-
-            <TabsContent
-              value="favorites"
-              className="flex-1 overflow-auto mt-0 data-[state=active]:flex-1"
-            >
-              <div className="h-full overflow-auto p-1">
-                <div className="flex flex-col items-center justify-center h-full min-h-[300px]">
-                  <Empty>
-                    <EmptyHeader>
-                      <EmptyMedia variant="icon">
-                        <BarChart className="h-12 w-12 text-muted-foreground" />
-                      </EmptyMedia>
-                      <EmptyTitle>Favorites feature coming soon</EmptyTitle>
-                      <EmptyDescription>
-                        You'll be able to mark products as favorites for quick access
-                      </EmptyDescription>
-                    </EmptyHeader>
-                  </Empty>
-                </div>
-              </div>
-            </TabsContent>
-          </Tabs>
+          <ProductTabs
+            activeTab={activeTab}
+            onTabChange={setActiveTab}
+            searchResults={searchResults}
+            products={products}
+            searchQuery={searchQuery}
+            activeCategory={activeCategory}
+            currencySymbol={currencySymbol}
+            onAddToCart={addToCart}
+            onQuickAdd={handleQuickAdd}
+            containerVariants={containerVariants}
+            itemVariants={itemVariants}
+            isTablet={isTablet}
+          />
         </div>
 
-        {/* Cart Section */}
-        <div className="w-full md:w-96 md:max-w-96 flex flex-col border rounded-lg bg-card shadow-sm flex-shrink-0 min-w-0">
-          <div className="p-4 border-b flex justify-between items-center">
-            <h2 className="text-lg font-semibold flex items-center">
-              <ShoppingCart className="mr-2 h-5 w-5" />
-              Shopping Cart
-            </h2>
-            {cart.length > 0 && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-8 text-destructive hover:text-destructive"
-                onClick={clearCart}
-              >
-                Clear
-              </Button>
-            )}
-          </div>
+        {/* Cart Section - Desktop/Tablet: Sidebar, Mobile: Drawer */}
+        {!isMobile && (
+          <Cart
+            cart={cart}
+            cartItemCount={cartItemCount}
+            cartSubtotal={cartSubtotal}
+            discountValue={discountValue}
+            discountType={discountType}
+            discountAmount={discountAmount}
+            taxRate={taxRate}
+            taxAmount={taxAmount}
+            cartTotal={cartTotal}
+            currencySymbol={currencySymbol}
+            onClearCart={clearCart}
+            onUpdateQuantity={updateQuantity}
+            onRemoveFromCart={removeFromCart}
+            onDiscountClick={() => setIsDiscountDialogOpen(true)}
+            onNotesClick={() => setIsNotesDialogOpen(true)}
+            onCustomerClick={() => setIsCustomerDialogOpen(true)}
+            onCheckoutClick={() => setIsCheckoutOpen(true)}
+            containerVariants={containerVariants}
+            itemVariants={itemVariants}
+            isMobile={false}
+            isTablet={isTablet}
+          />
+        )}
 
-          <div className="flex-1 overflow-y-auto overflow-x-hidden">
-            <AnimatePresence>
-              {cart.length > 0 ? (
-                <motion.div
-                  className="divide-y"
-                  variants={containerVariants}
-                  initial="hidden"
-                  animate="show"
-                >
-                  {cart.map((item) => (
-                    <motion.div
-                      key={item.product.id}
-                      variants={itemVariants}
-                      exit={{ opacity: 0, x: 20 }}
-                      className="flex items-center p-4 hover:bg-muted/50"
-                    >
-                      <div className="w-12 h-12 bg-muted rounded-md mr-3 flex-shrink-0 overflow-hidden">
-                        {item.product.image ? (
-                          <img
-                            src={item.product.image || "/placeholder.svg"}
-                            alt={item.product.name}
-                            className="h-full w-full object-cover"
-                          />
-                        ) : (
-                          <Package className="h-6 w-6 m-3 text-muted-foreground" />
-                        )}
-                      </div>
+        {/* Mobile Cart Drawer */}
+        {isMobile && (
+          <Cart
+            cart={cart}
+            cartItemCount={cartItemCount}
+            cartSubtotal={cartSubtotal}
+            discountValue={discountValue}
+            discountType={discountType}
+            discountAmount={discountAmount}
+            taxRate={taxRate}
+            taxAmount={taxAmount}
+            cartTotal={cartTotal}
+            currencySymbol={currencySymbol}
+            onClearCart={clearCart}
+            onUpdateQuantity={updateQuantity}
+            onRemoveFromCart={removeFromCart}
+            onDiscountClick={() => setIsDiscountDialogOpen(true)}
+            onNotesClick={() => setIsNotesDialogOpen(true)}
+            onCustomerClick={() => setIsCustomerDialogOpen(true)}
+            onCheckoutClick={() => setIsCheckoutOpen(true)}
+            containerVariants={containerVariants}
+            itemVariants={itemVariants}
+            isMobile={true}
+            isOpen={isCartOpen}
+            onOpenChange={setIsCartOpen}
+          />
+        )}
 
-                      <div className="flex-1 min-w-0 mr-3">
-                        <h3 className="font-medium text-sm truncate mb-1">
-                          {item.product.name}
-                        </h3>
-                        <p className="text-xs text-muted-foreground mb-1">
-                          {currencySymbol}
-                          {item.product.price.toFixed(2)} each
-                        </p>
-                        <p className="text-xs font-medium text-muted-foreground">
-                          {currencySymbol}
-                          {(item.product.price * item.quantity).toFixed(2)}
-                        </p>
-                      </div>
-
-                      <div className="flex items-center gap-1.5">
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          className="h-7 w-7"
-                          onClick={() =>
-                            updateQuantity(item.product.id, item.quantity - 1)
-                          }
-                        >
-                          <Minus className="h-3 w-3" />
-                        </Button>
-                        <span className="w-6 text-center text-sm">
-                          {item.quantity}
-                        </span>
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          className="h-7 w-7"
-                          onClick={() =>
-                            updateQuantity(item.product.id, item.quantity + 1)
-                          }
-                          disabled={item.quantity >= item.product.stock}
-                        >
-                          <Plus className="h-3 w-3" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7 text-destructive"
-                          onClick={() => removeFromCart(item.product.id)}
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    </motion.div>
-                  ))}
-                </motion.div>
-              ) : (
-                <div className="flex flex-col items-center justify-center h-full min-h-[300px] p-4">
-                  <Empty>
-                    <EmptyHeader>
-                      <EmptyMedia variant="icon">
-                        <ShoppingCart className="h-12 w-12 text-muted-foreground" />
-                      </EmptyMedia>
-                      <EmptyTitle>Your cart is empty</EmptyTitle>
-                      <EmptyDescription>
-                        Add products by clicking on them or using the Quick Add button
-                      </EmptyDescription>
-                    </EmptyHeader>
-                  </Empty>
-                </div>
-              )}
-            </AnimatePresence>
-          </div>
-
-          <div className="p-4 border-t bg-muted/30">
-            <div className="space-y-3 mb-4">
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Subtotal:</span>
-                <span className="font-medium">
-                  {currencySymbol}
-                  {cartSubtotal.toFixed(2)}
-                </span>
-              </div>
-
-              {discountValue > 0 && (
-                <>
-                  <Separator />
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">
-                      Discount{" "}
-                      {discountType === "percentage" ? `(${discountValue}%)` : ""}
-                      :
-                    </span>
-                    <span className="text-destructive font-medium">
-                      -{currencySymbol}
-                      {discountAmount.toFixed(2)}
-                    </span>
-                  </div>
-                </>
-              )}
-
-              <Separator />
-
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Tax ({taxRate}%):</span>
-                <span className="font-medium">
-                  {currencySymbol}
-                  {taxAmount.toFixed(2)}
-                </span>
-              </div>
-
-              <Separator />
-
-              <div className="flex justify-between items-center pt-1">
-                <span className="font-semibold text-base">Total:</span>
-                <span className="text-xl font-bold">
-                  {currencySymbol}
-                  {cartTotal.toFixed(2)}
-                </span>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-3 gap-2 mb-2">
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={cart.length === 0}
-                className="flex items-center justify-center"
-                onClick={() => setIsDiscountDialogOpen(true)}
-              >
-                <Percent className="h-4 w-4 mr-1" />
-                Discount
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={cart.length === 0}
-                className="flex items-center justify-center"
-                onClick={() => setIsNotesDialogOpen(true)}
-              >
-                <FileText className="h-4 w-4 mr-1" />
-                Notes
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={cart.length === 0}
-                className="flex items-center justify-center"
-                onClick={() => setIsCustomerDialogOpen(true)}
-              >
-                <User className="h-4 w-4 mr-1" />
-                Customer
-              </Button>
-            </div>
-
-            <Button
-              className="w-full"
-              size="lg"
-              disabled={cart.length === 0}
-              onClick={() => setIsCheckoutOpen(true)}
-            >
-              Checkout
-              <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
-          </div>
-        </div>
+        {/* Mobile Cart Button */}
+        {isMobile && (
+          <MobileCartButton
+            cartItemCount={cartItemCount}
+            cartTotal={cartTotal}
+            currencySymbol={currencySymbol}
+            onClick={() => setIsCartOpen(true)}
+          />
+        )}
 
         {/* Discount Dialog */}
         <DiscountDialog

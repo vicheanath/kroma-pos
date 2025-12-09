@@ -1,74 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { motion, AnimatePresence } from "framer-motion";
 import { usePosData, type Category } from "@/components/pos-data-provider";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-  DialogDescription,
-} from "@/components/ui/dialog";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Empty,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-  EmptyDescription,
-} from "@/components/ui/empty";
-import { Search, Plus, MoreVertical, Edit, Trash2, Tags } from "lucide-react";
-
-// Define the schema for Category using zod
-const categorySchema = z.object({
-  name: z.string().min(1, "Name is required"),
-  description: z.string().optional(),
-  color: z.string().optional(),
-  icon: z.string().optional(),
-});
-
-type CategoryFormValues = z.infer<typeof categorySchema>;
-
-const colorOptions = [
-  "bg-red-500",
-  "bg-green-500",
-  "bg-blue-500",
-  "bg-yellow-500",
-  "bg-purple-500",
-];
+import { Search, Plus } from "lucide-react";
+import { CategoryTable } from "./components/CategoryTable";
+import { AddCategoryDialog } from "./components/AddCategoryDialog";
+import { EditCategoryDialog } from "./components/EditCategoryDialog";
+import { DeleteCategoryDialog } from "./components/DeleteCategoryDialog";
+import { type CategoryFormValues } from "./components/CategoryForm";
 
 export default function CategoriesPage() {
   const {
@@ -83,15 +25,6 @@ export default function CategoriesPage() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [currentCategory, setCurrentCategory] = useState<Category | null>(null);
-  const {
-    register,
-    handleSubmit,
-    reset,
-    getValues,
-    formState: { errors },
-  } = useForm<CategoryFormValues>({
-    resolver: zodResolver(categorySchema),
-  });
 
   // Filter categories
   const filteredCategories = categories.filter(
@@ -110,9 +43,8 @@ export default function CategoriesPage() {
   // Handle adding a new category
   const handleAddCategory = async (data: CategoryFormValues) => {
     addNewCategory({
-      ...data
+      ...data,
     });
-    reset();
     setIsAddDialogOpen(false);
   };
 
@@ -121,7 +53,6 @@ export default function CategoriesPage() {
     if (!currentCategory) return;
 
     updateExistingCategory({ ...currentCategory, ...data });
-    reset();
     setIsEditDialogOpen(false);
     setCurrentCategory(null);
   };
@@ -153,7 +84,10 @@ export default function CategoriesPage() {
           />
         </div>
 
-        <Button onClick={() => setIsAddDialogOpen(true)} className="flex-shrink-0">
+        <Button
+          onClick={() => setIsAddDialogOpen(true)}
+          className="flex-shrink-0"
+        >
           <Plus className="mr-2 h-4 w-4" />
           Add Category
         </Button>
@@ -164,299 +98,49 @@ export default function CategoriesPage() {
           <CardTitle>Categories</CardTitle>
         </CardHeader>
         <CardContent className="overflow-hidden min-w-0">
-          <div className="overflow-x-auto min-w-0">
-            <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Description</TableHead>
-                <TableHead>Products</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              <AnimatePresence>
-                {filteredCategories.map((category) => (
-                  <motion.tr
-                    key={category.id}
-                    variants={itemVariants}
-                    initial="hidden"
-                    animate="show"
-                    exit={{ opacity: 0, height: 0 }}
-                  >
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded bg-muted flex items-center justify-center">
-                          <Tags className="h-4 w-4 text-muted-foreground" />
-                        </div>
-                        <p className="font-medium">{category.name}</p>
-                      </div>
-                    </TableCell>
-                    <TableCell>{category.description || "-"}</TableCell>
-                    <TableCell>{getProductCount(category.id)}</TableCell>
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <MoreVertical className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem
-                            onClick={() => {
-                              setCurrentCategory(category);
-                              setIsEditDialogOpen(true);
-                            }}
-                          >
-                            <Edit className="mr-2 h-4 w-4" />
-                            Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            className="text-destructive"
-                            onClick={() => {
-                              setCurrentCategory(category);
-                              setIsDeleteDialogOpen(true);
-                            }}
-                          >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </motion.tr>
-                ))}
-              </AnimatePresence>
-
-              {filteredCategories.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={4} className="py-8">
-                    <Empty>
-                      <EmptyHeader>
-                        <EmptyMedia variant="icon">
-                          <Tags className="h-6 w-6" />
-                        </EmptyMedia>
-                        <EmptyTitle>No categories found</EmptyTitle>
-                        <EmptyDescription>
-                          {searchQuery
-                            ? "Try adjusting your search criteria."
-                            : "Get started by adding your first category."}
-                        </EmptyDescription>
-                      </EmptyHeader>
-                    </Empty>
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-          </div>
+          <CategoryTable
+            categories={filteredCategories}
+            searchQuery={searchQuery}
+            getProductCount={getProductCount}
+            onEdit={(category) => {
+              setCurrentCategory(category);
+              setIsEditDialogOpen(true);
+            }}
+            onDelete={(category) => {
+              setCurrentCategory(category);
+              setIsDeleteDialogOpen(true);
+            }}
+            itemVariants={itemVariants}
+          />
         </CardContent>
       </Card>
 
-      {/* Add Category Dialog */}
-      <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Add New Category</DialogTitle>
-            <DialogDescription>
-              Enter the details for the new category.
-            </DialogDescription>
-          </DialogHeader>
+      <AddCategoryDialog
+        isOpen={isAddDialogOpen}
+        onClose={() => setIsAddDialogOpen(false)}
+        onSubmit={handleAddCategory}
+      />
 
-          <form
-            onSubmit={handleSubmit(handleAddCategory)}
-            className="grid gap-4 py-4"
-          >
-            <div className="grid gap-2">
-              <Label htmlFor="name">Name</Label>
-              <Input
-                id="name"
-                placeholder="Category name"
-                {...register("name")}
-              />
-              {errors.name && (
-                <p className="text-destructive">{errors.name.message}</p>
-              )}
-            </div>
+      <EditCategoryDialog
+        isOpen={isEditDialogOpen}
+        onClose={() => {
+          setIsEditDialogOpen(false);
+          setCurrentCategory(null);
+        }}
+        category={currentCategory}
+        onSubmit={handleEditCategory}
+      />
 
-            <div className="grid gap-2">
-              <Label htmlFor="description">Description (Optional)</Label>
-              <Textarea
-                id="description"
-                placeholder="Category description"
-                {...register("description")}
-              />
-            </div>
-
-            <div className="grid gap-2">
-              <Label htmlFor="color">Color (Optional)</Label>
-              <div className="flex gap-2">
-                {colorOptions.map((color) => (
-                  <div
-                    key={color}
-                    className={`w-8 h-8 rounded cursor-pointer border ${
-                      getValues().color === color
-                        ? "border-black"
-                        : "border-transparent"
-                    } ${color}`}
-                    onClick={() => reset({ ...getValues(), color })}
-                  />
-                ))}
-              </div>
-            </div>
-
-            <div className="grid gap-2">
-              <Label htmlFor="icon">Icon (Optional)</Label>
-              <Input
-                id="icon"
-                placeholder="Category icon"
-                {...register("icon")}
-              />
-            </div>
-
-            <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={() => setIsAddDialogOpen(false)}
-              >
-                Cancel
-              </Button>
-              <Button type="submit">Add Category</Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      {/* Edit Category Dialog */}
-      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Edit Category</DialogTitle>
-            <DialogDescription>Update the category details.</DialogDescription>
-          </DialogHeader>
-
-          {currentCategory && (
-            <form
-              onSubmit={handleSubmit(handleEditCategory)}
-              className="grid gap-4 py-4"
-            >
-              <div className="grid gap-2">
-                <Label htmlFor="edit-name">Name</Label>
-                <Input
-                  id="edit-name"
-                  placeholder="Category name"
-                  defaultValue={currentCategory.name}
-                  {...register("name")}
-                />
-                {errors.name && (
-                  <p className="text-destructive">{errors.name.message}</p>
-                )}
-              </div>
-
-              <div className="grid gap-2">
-                <Label htmlFor="edit-description">Description (Optional)</Label>
-                <Textarea
-                  id="edit-description"
-                  placeholder="Category description"
-                  defaultValue={currentCategory.description}
-                  {...register("description")}
-                />
-              </div>
-
-              <div className="grid gap-2">
-                <Label htmlFor="edit-color">Color (Optional)</Label>
-                <div className="flex gap-2">
-                  {colorOptions.map((color) => (
-                    <div
-                      key={color}
-                      className={`w-8 h-8 rounded cursor-pointer border ${
-                        getValues().color === color
-                          ? "border-black"
-                          : "border-transparent"
-                      } ${color}`}
-                      onClick={() => reset({ ...getValues(), color })}
-                    />
-                  ))}
-                </div>
-              </div>
-
-              <div className="grid gap-2">
-                <Label htmlFor="edit-icon">Icon (Optional)</Label>
-                <Input
-                  id="edit-icon"
-                  placeholder="Category icon"
-                  defaultValue={currentCategory.icon}
-                  {...register("icon")}
-                />
-              </div>
-
-              <DialogFooter>
-                <Button
-                  variant="outline"
-                  onClick={() => setIsEditDialogOpen(false)}
-                >
-                  Cancel
-                </Button>
-                <Button type="submit">Save Changes</Button>
-              </DialogFooter>
-            </form>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      {/* Delete Category Dialog */}
-      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Category</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete this category? This action cannot
-              be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-
-          {currentCategory && (
-            <div className="py-4">
-              <p className="font-medium">{currentCategory.name}</p>
-              {currentCategory.description && (
-                <p className="text-sm text-muted-foreground">
-                  {currentCategory.description}
-                </p>
-              )}
-              <p className="mt-2 text-sm">
-                This category contains{" "}
-                <span className="font-medium">
-                  {getProductCount(currentCategory.id)}
-                </span>{" "}
-                products.
-              </p>
-              {getProductCount(currentCategory.id) > 0 && (
-                <p className="mt-2 text-sm text-destructive">
-                  You must reassign or delete these products before deleting
-                  this category.
-                </p>
-              )}
-            </div>
-          )}
-
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setIsDeleteDialogOpen(false)}>
-              Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDeleteCategory}
-              disabled={
-                currentCategory
-                  ? getProductCount(currentCategory.id) > 0
-                  : false
-              }
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 disabled:opacity-50 disabled:pointer-events-none"
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <DeleteCategoryDialog
+        isOpen={isDeleteDialogOpen}
+        onClose={() => {
+          setIsDeleteDialogOpen(false);
+          setCurrentCategory(null);
+        }}
+        category={currentCategory}
+        productCount={currentCategory ? getProductCount(currentCategory.id) : 0}
+        onConfirm={handleDeleteCategory}
+      />
     </div>
   );
 }

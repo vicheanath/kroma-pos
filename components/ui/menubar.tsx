@@ -90,7 +90,7 @@ const MenubarContent = React.forwardRef<
     { className, align = "start", alignOffset = -4, sideOffset = 8, ...props },
     ref
   ) => (
-    <MenubarPrimitive.Portal>
+    <MenubarPrimitive.Portal container={typeof document !== "undefined" ? document.body : undefined}>
       <MenubarPrimitive.Content
         ref={ref}
         align={align}

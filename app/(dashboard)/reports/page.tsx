@@ -14,26 +14,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip as RechartsTooltip,
-  ResponsiveContainer,
-  LineChart,
-  Line,
-} from "recharts";
-import { Download, Calendar, Printer } from "lucide-react";
-import {
   format,
   subDays,
   startOfWeek,
@@ -42,16 +22,12 @@ import {
   endOfMonth,
 } from "date-fns";
 import { useToast } from "@/components/ui/use-toast";
-import {
-  Empty,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-  EmptyDescription,
-} from "@/components/ui/empty";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Spinner } from "@/components/ui/spinner";
 import { salesApi } from "@/lib/db";
+import { ReportFilters } from "./components/ReportFilters";
+import { RevenueChart } from "./components/RevenueChart";
+import { TopProductsChart } from "./components/TopProductsChart";
+import { SalesTable } from "./components/SalesTable";
+import { exportToCSV, printReport, printInvoice } from "./utils/exportUtils";
 
 export default function ReportsPage() {
   const { sales, products, categories } = usePosData();
@@ -152,7 +128,7 @@ export default function ReportsPage() {
             const dayStart = new Date(date.setHours(0, 0, 0, 0));
             const dayEnd = new Date(date.setHours(23, 59, 59, 999));
 
-            const dayRevenue = await await salesApi.getRevenueByDateRange(
+            const dayRevenue = await salesApi.getRevenueByDateRange(
               dayStart,
               dayEnd
             );
@@ -252,233 +228,16 @@ export default function ReportsPage() {
     loadReportData();
   }, [dateRange, startDate, endDate, products, toast]);
 
-  // Export to CSV
-  const exportToCSV = () => {
-    // Create CSV content
-    const headers = [
-      "Date",
-      "Transaction ID",
-      "Customer",
-      "Items",
-      "Payment Method",
-      "Amount",
-    ];
-    const csvRows = [headers];
-
-    // Add data rows
-    filteredSales.forEach((sale) => {
-      const row = [
-        format(new Date(sale.date), "yyyy-MM-dd HH:mm:ss"),
-        sale.id,
-        sale.customerName || "Walk-in Customer",
-        sale.items.length.toString(),
-        sale.paymentMethod === "credit"
-          ? "Credit Card"
-          : sale.paymentMethod === "cash"
-          ? "Cash"
-          : "Mobile Payment",
-        sale.total.toFixed(2),
-      ];
-      csvRows.push(row);
-    });
-
-    // Convert to CSV string
-    const csvContent = csvRows.map((row) => row.join(",")).join("\n");
-
-    // Create and download the file
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute(
-      "download",
-      `sales_report_${format(new Date(), "yyyy-MM-dd")}.csv`
-    );
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-
-    toast({
-      title: "Report Exported",
-      description: "The sales report has been exported as CSV.",
-    });
+  const handleExportCSV = () => {
+    exportToCSV(filteredSales, reportRef, toast);
   };
 
-  // Print report
-  const printReport = () => {
-    if (!reportRef.current) return;
-
-    const printContent = reportRef.current.innerHTML;
-    const printWindow = window.open("", "_blank");
-    if (!printWindow) {
-      toast({
-        title: "Print Error",
-        description:
-          "Could not open print window. Please check your browser settings.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    printWindow.document.write(`
-      <html>
-        <head>
-          <title>Sales Report - ${format(new Date(), "yyyy-MM-dd")}</title>
-          <style>
-            body {
-              font-family: Arial, sans-serif;
-              padding: 20px;
-              max-width: 1000px;
-              margin: 0 auto;
-            }
-            h1, h2 {
-              text-align: center;
-            }
-            table {
-              width: 100%;
-              border-collapse: collapse;
-              margin: 20px 0;
-            }
-            th, td {
-              padding: 8px;
-              text-align: left;
-              border-bottom: 1px solid #ddd;
-            }
-            th {
-              background-color: #f2f2f2;
-            }
-            .report-header {
-              display: flex;
-              justify-content: space-between;
-              margin-bottom: 20px;
-            }
-            .report-summary {
-              margin-bottom: 20px;
-            }
-          </style>
-        </head>
-        <body>
-          <h1>Sales Report</h1>
-          <div class="report-header">
-            <div>
-              <p><strong>Date:</strong> ${format(
-                new Date(),
-                "MMMM dd, yyyy"
-              )}</p>
-              <p><strong>Generated by:</strong> POS System</p>
-            </div>
-            <div>
-              <p><strong>Total Sales:</strong> ${filteredSales.length}</p>
-              <p><strong>Total Revenue:</strong> $${filteredSales
-                .reduce((sum, sale) => sum + sale.total, 0)
-                .toFixed(2)}</p>
-            </div>
-          </div>
-          ${printContent}
-        </body>
-      </html>
-    `);
-
-    printWindow.document.close();
-    printWindow.focus();
-    printWindow.print();
-    printWindow.close();
-
-    toast({
-      title: "Report Printed",
-      description: "The sales report has been sent to the printer.",
-    });
+  const handlePrintReport = () => {
+    printReport(reportRef, filteredSales, toast);
   };
 
-  // Add a function to handle printing individual invoices
-  const printInvoice = (sale: any) => {
-    const printWindow = window.open("", "_blank");
-    if (!printWindow) {
-      toast({
-        title: "Print Error",
-        description:
-          "Could not open print window. Please check your browser settings.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    printWindow.document.write(`
-      <html>
-        <head>
-          <title>Invoice - ${sale.id}</title>
-          <style>
-            body {
-              font-family: Arial, sans-serif;
-              padding: 20px;
-              max-width: 600px;
-              margin: 0 auto;
-            }
-            h1, h2 {
-              text-align: center;
-            }
-            table {
-              width: 100%;
-              border-collapse: collapse;
-              margin: 20px 0;
-            }
-            th, td {
-              padding: 8px;
-              text-align: left;
-              border-bottom: 1px solid #ddd;
-            }
-            th {
-              background-color: #f2f2f2;
-            }
-          </style>
-        </head>
-        <body>
-          <h1>Invoice</h1>
-          <p><strong>Transaction ID:</strong> ${sale.id}</p>
-          <p><strong>Date:</strong> ${format(
-            new Date(sale.date),
-            "MMM dd, yyyy HH:mm"
-          )}</p>
-          <p><strong>Customer:</strong> ${
-            sale.customerName || "Walk-in Customer"
-          }</p>
-          <h2>Items</h2>
-          <table>
-            <thead>
-              <tr>
-                <th>Item</th>
-                <th>Quantity</th>
-                <th>Price</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${sale.items
-                .map(
-                  (item: any) => `
-                <tr>
-                  <td>${item.name}</td>
-                  <td>${item.quantity}</td>
-                  <td>$${item.price.toFixed(2)}</td>
-                </tr>
-              `
-                )
-                .join("")}
-            </tbody>
-          </table>
-          <p><strong>Total:</strong> $${sale.total.toFixed(2)}</p>
-        </body>
-      </html>
-    `);
-
-    printWindow.document.close();
-    printWindow.focus();
-    printWindow.print();
-    printWindow.close();
-
-    toast({
-      title: "Invoice Printed",
-      description: `Invoice for transaction ${sale.id} has been sent to the printer.`,
-    });
+  const handlePrintInvoice = (sale: any) => {
+    printInvoice(sale, toast);
   };
 
   // Animation variants
@@ -497,18 +256,15 @@ export default function ReportsPage() {
     show: { y: 0, opacity: 1 },
   };
 
-  // Custom tooltip component for charts
-  const ChartTooltip = ({ active, payload, label }: any) => {
-    if (active && payload && payload.length) {
-      return (
-        <div className="bg-background border rounded p-2 shadow-md">
-          <p className="font-medium">{`${label}`}</p>
-          <p className="text-sm">{`Sales: $${payload[0].value.toFixed(2)}`}</p>
-        </div>
-      );
-    }
-    return null;
-  };
+  // Calculate summary statistics
+  const totalRevenue = filteredSales.reduce((sum, sale) => sum + sale.total, 0);
+  const totalTransactions = filteredSales.length;
+  const averageTransaction =
+    totalTransactions > 0 ? totalRevenue / totalTransactions : 0;
+  const totalItems = filteredSales.reduce(
+    (sum, sale) => sum + sale.items.length,
+    0
+  );
 
   return (
     <motion.div
@@ -517,89 +273,120 @@ export default function ReportsPage() {
       initial="hidden"
       animate="show"
     >
-      <motion.div
-        variants={itemVariants}
-        className="flex flex-col sm:flex-row gap-4 justify-between"
-      >
-        <div className="flex flex-wrap gap-2">
-          <Select value={dateRange} onValueChange={setDateRange}>
-            <SelectTrigger className="w-[150px]">
-              <SelectValue placeholder="Date Range" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="day">Daily</SelectItem>
-              <SelectItem value="week">Weekly</SelectItem>
-              <SelectItem value="month">Monthly</SelectItem>
-              <SelectItem value="custom">Custom</SelectItem>
-            </SelectContent>
-          </Select>
+      {/* Summary Cards */}
+      <motion.div variants={itemVariants} className="grid gap-4 md:grid-cols-4">
+        <Card className="border-2 shadow-sm">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="2"
+              className="h-4 w-4 text-muted-foreground"
+            >
+              <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+            </svg>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">${totalRevenue.toFixed(2)}</div>
+            <p className="text-xs text-muted-foreground">For selected period</p>
+          </CardContent>
+        </Card>
+        <Card className="border-2 shadow-sm">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Transactions</CardTitle>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="2"
+              className="h-4 w-4 text-muted-foreground"
+            >
+              <rect width="20" height="14" x="2" y="5" rx="2" />
+              <path d="M2 10h20" />
+            </svg>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{totalTransactions}</div>
+            <p className="text-xs text-muted-foreground">Total sales</p>
+          </CardContent>
+        </Card>
+        <Card className="border-2 shadow-sm">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              Avg. Transaction
+            </CardTitle>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="2"
+              className="h-4 w-4 text-muted-foreground"
+            >
+              <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+              <circle cx="9" cy="7" r="4" />
+              <path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
+            </svg>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              ${averageTransaction.toFixed(2)}
+            </div>
+            <p className="text-xs text-muted-foreground">Per transaction</p>
+          </CardContent>
+        </Card>
+        <Card className="border-2 shadow-sm">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Items Sold</CardTitle>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="2"
+              className="h-4 w-4 text-muted-foreground"
+            >
+              <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z" />
+              <path d="M3 6h18" />
+              <path d="M16 10a4 4 0 0 1-8 0" />
+            </svg>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{totalItems}</div>
+            <p className="text-xs text-muted-foreground">Total items</p>
+          </CardContent>
+        </Card>
+      </motion.div>
 
-          {dateRange === "custom" && (
-            <>
-              <div className="flex items-center">
-                <Calendar className="mr-2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  className="w-[150px]"
-                />
-              </div>
-              <div className="flex items-center">
-                <span className="mx-2">to</span>
-                <Calendar className="mr-2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  className="w-[150px]"
-                />
-              </div>
-            </>
-          )}
-        </div>
-
-        <div className="flex gap-2">
-          <Select value={productFilter} onValueChange={setProductFilter}>
-            <SelectTrigger className="w-[150px]">
-              <SelectValue placeholder="Product" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Products</SelectItem>
-              {products &&
-                products.map((product) => (
-                  <SelectItem key={product.id} value={product.id}>
-                    {product.name}
-                  </SelectItem>
-                ))}
-            </SelectContent>
-          </Select>
-
-          <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-            <SelectTrigger className="w-[150px]">
-              <SelectValue placeholder="Category" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Categories</SelectItem>
-              {categories &&
-                categories.map((category) => (
-                  <SelectItem key={category.id} value={category.id}>
-                    {category.name}
-                  </SelectItem>
-                ))}
-            </SelectContent>
-          </Select>
-
-          <Button variant="outline" onClick={exportToCSV}>
-            <Download className="mr-2 h-4 w-4" />
-            Export CSV
-          </Button>
-
-          <Button variant="outline" onClick={printReport}>
-            <Printer className="mr-2 h-4 w-4" />
-            Print
-          </Button>
-        </div>
+      <motion.div variants={itemVariants}>
+        <ReportFilters
+          dateRange={dateRange}
+          onDateRangeChange={setDateRange}
+          startDate={startDate}
+          onStartDateChange={setStartDate}
+          endDate={endDate}
+          onEndDateChange={setEndDate}
+          productFilter={productFilter}
+          onProductFilterChange={setProductFilter}
+          categoryFilter={categoryFilter}
+          onCategoryFilterChange={setCategoryFilter}
+          products={products}
+          categories={categories}
+          onExportCSV={handleExportCSV}
+          onPrint={handlePrintReport}
+        />
       </motion.div>
 
       <div ref={reportRef}>
@@ -607,173 +394,16 @@ export default function ReportsPage() {
           variants={itemVariants}
           className="grid gap-6 md:grid-cols-2"
         >
-          <Card>
-            <CardHeader>
-              <CardTitle>Revenue Over Time</CardTitle>
-            </CardHeader>
-            <CardContent className="h-80">
-              {isLoading ? (
-                <div className="flex flex-col items-center justify-center h-full gap-2">
-                  <Spinner className="h-6 w-6" />
-                  <p className="text-sm text-muted-foreground">Loading data...</p>
-                </div>
-              ) : revenueData.length === 0 ? (
-                <Empty>
-                  <EmptyHeader>
-                    <EmptyMedia variant="icon">
-                      <BarChart className="h-6 w-6" />
-                    </EmptyMedia>
-                    <EmptyTitle>No data available</EmptyTitle>
-                    <EmptyDescription>
-                      No revenue data found for the selected date range.
-                    </EmptyDescription>
-                  </EmptyHeader>
-                </Empty>
-              ) : (
-                <ResponsiveContainer width="100%" height={320}>
-                  <LineChart data={revenueData}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
-                      <XAxis dataKey="name" stroke="#8884d8" />
-                      <YAxis stroke="#8884d8" />
-                      <RechartsTooltip content={<ChartTooltip />} />
-                      <Line
-                        type="monotone"
-                        dataKey="sales"
-                        stroke="rgb(34, 197, 94)" // Tailwind green-500
-                        strokeWidth={3}
-                        dot={{ r: 5, fill: "rgb(34, 197, 94)" }} // Tailwind green-500
-                        activeDot={{ r: 8, fill: "rgb(22, 163, 74)" }} // Tailwind green-600
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Top Selling Products</CardTitle>
-            </CardHeader>
-            <CardContent className="h-80">
-              {isLoading ? (
-                <div className="flex flex-col items-center justify-center h-full gap-2">
-                  <Spinner className="h-6 w-6" />
-                  <p className="text-sm text-muted-foreground">Loading data...</p>
-                </div>
-              ) : topProductsData.length === 0 ? (
-                <Empty>
-                  <EmptyHeader>
-                    <EmptyMedia variant="icon">
-                      <BarChart className="h-6 w-6" />
-                    </EmptyMedia>
-                    <EmptyTitle>No data available</EmptyTitle>
-                    <EmptyDescription>
-                      No top products data found for the selected date range.
-                    </EmptyDescription>
-                  </EmptyHeader>
-                </Empty>
-              ) : (
-                <ResponsiveContainer width="100%" height={320}>
-                  <BarChart data={topProductsData}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
-                      <XAxis dataKey="name" stroke="#8884d8" />
-                      <YAxis stroke="#8884d8" />
-                      <RechartsTooltip content={<ChartTooltip />} />
-                      <Bar
-                        dataKey="sales"
-                        fill="rgb(239, 68, 68)" // Tailwind red-500
-                        radius={[10, 10, 0, 0]}
-                    />
-                  </BarChart>
-                </ResponsiveContainer>
-              )}
-            </CardContent>
-          </Card>
+          <RevenueChart data={revenueData} isLoading={isLoading} />
+          <TopProductsChart data={topProductsData} isLoading={isLoading} />
         </motion.div>
 
         <motion.div variants={itemVariants}>
-          <Card className="mt-6">
-            <CardHeader>
-              <CardTitle>Sales Transactions</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Transaction ID</TableHead>
-                    <TableHead>Customer</TableHead>
-                    <TableHead>Items</TableHead>
-                    <TableHead>Payment Method</TableHead>
-                    <TableHead className="text-right">Amount</TableHead>
-                    <TableHead className="text-center">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {isLoading ? (
-                    <TableRow>
-                      <TableCell colSpan={7} className="py-8">
-                        <div className="flex flex-col items-center justify-center gap-2">
-                          <Spinner className="h-6 w-6" />
-                          <p className="text-sm text-muted-foreground">
-                            Loading sales data...
-                          </p>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ) : filteredSales.length > 0 ? (
-                    filteredSales.map((sale) => (
-                      <TableRow key={sale.id} className="hover:bg-gray-100">
-                        <TableCell>
-                          {format(new Date(sale.date), "MMM dd, yyyy HH:mm")}
-                        </TableCell>
-                        <TableCell>{sale.id.slice(0, 8)}</TableCell>
-                        <TableCell>
-                          {sale.customerName || "Walk-in Customer"}
-                        </TableCell>
-                        <TableCell>{sale.items.length} items</TableCell>
-                        <TableCell>
-                          {sale.paymentMethod === "credit"
-                            ? "Credit Card"
-                            : sale.paymentMethod === "cash"
-                            ? "Cash"
-                            : "Mobile Payment"}
-                        </TableCell>
-                        <TableCell className="text-right font-medium">
-                          ${sale.total.toFixed(2)}
-                        </TableCell>
-                        <TableCell>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => printInvoice(sale)}
-                          >
-                            Print Invoice
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  ) : (
-                    <TableRow>
-                      <TableCell colSpan={7} className="py-8">
-                        <Empty>
-                          <EmptyHeader>
-                            <EmptyMedia variant="icon">
-                              <BarChart className="h-6 w-6" />
-                            </EmptyMedia>
-                            <EmptyTitle>No sales data available</EmptyTitle>
-                            <EmptyDescription>
-                              No sales data found for the selected period. Try adjusting your date range or filters.
-                            </EmptyDescription>
-                          </EmptyHeader>
-                        </Empty>
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
+          <SalesTable
+            sales={filteredSales}
+            isLoading={isLoading}
+            onPrintInvoice={handlePrintInvoice}
+          />
         </motion.div>
       </div>
     </motion.div>

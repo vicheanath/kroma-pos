@@ -2,134 +2,13 @@
 
 import { useState, useRef, useEffect } from "react";
 import { usePosData } from "@/components/pos-data-provider";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { Slider } from "@/components/ui/slider";
-import { Switch } from "@/components/ui/switch";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Empty,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-  EmptyDescription,
-} from "@/components/ui/empty";
 import { useToast } from "@/components/ui/use-toast";
-import {
-  Printer,
-  Plus,
-  Minus,
-  RefreshCw,
-  Package,
-  Check,
-  X,
-  Pencil,
-} from "lucide-react";
 import JsBarcode from "jsbarcode";
-
-// Barcode template types
-type BarcodeTemplate = {
-  id: string;
-  name: string;
-  width: number;
-  height: number;
-  labelsPerRow: number;
-  fontSize: number;
-  showPrice: boolean;
-  showName: boolean;
-  showSku: boolean;
-  margin: number;
-  padding: number;
-};
-
-// Default barcode templates
-const BARCODE_TEMPLATES: BarcodeTemplate[] = [
-  {
-    id: "small",
-    name: "Small (30x20mm)",
-    width: 113,
-    height: 76,
-    labelsPerRow: 3,
-    fontSize: 8,
-    showPrice: true,
-    showName: true,
-    showSku: false,
-    margin: 2,
-    padding: 5,
-  },
-  {
-    id: "medium",
-    name: "Medium (50x30mm)",
-    width: 189,
-    height: 113,
-    labelsPerRow: 2,
-    fontSize: 10,
-    showPrice: true,
-    showName: true,
-    showSku: true,
-    margin: 4,
-    padding: 8,
-  },
-  {
-    id: "large",
-    name: "Large (100x50mm)",
-    width: 378,
-    height: 189,
-    labelsPerRow: 1,
-    fontSize: 12,
-    showPrice: true,
-    showName: true,
-    showSku: true,
-    margin: 6,
-    padding: 10,
-  },
-  {
-    id: "custom",
-    name: "Custom",
-    width: 200,
-    height: 100,
-    labelsPerRow: 2,
-    fontSize: 10,
-    showPrice: true,
-    showName: true,
-    showSku: true,
-    margin: 4,
-    padding: 8,
-  },
-];
-
-// Barcode types
-const BARCODE_TYPES = [
-  { id: "CODE128", name: "Code 128" },
-  { id: "EAN13", name: "EAN-13" },
-  { id: "EAN8", name: "EAN-8" },
-  { id: "UPC", name: "UPC-A" },
-  { id: "CODE39", name: "Code 39" },
-];
+import { BARCODE_TEMPLATES, type BarcodeTemplate } from "./utils/barcodeUtils";
+import { BarcodeSettingsCard } from "./components/BarcodeSettingsCard";
+import { CustomTemplateCard } from "./components/CustomTemplateCard";
+import { ProductSelectionTable } from "./components/ProductSelectionTable";
+import { BarcodeLabel } from "./components/BarcodeLabel";
 
 export default function BarcodeDesignerPage() {
   const { toast } = useToast();
@@ -142,17 +21,17 @@ export default function BarcodeDesignerPage() {
   const [customTemplate, setCustomTemplate] = useState<BarcodeTemplate>(
     BARCODE_TEMPLATES[3]
   );
-  const [barcodeType, setBarcodeType] = useState(BARCODE_TYPES[0].id);
+  const [barcodeType, setBarcodeType] = useState("CODE128");
   const [showPreview, setShowPreview] = useState(true);
   const printRef = useRef<HTMLDivElement>(null);
 
-  // Generate barcodes after rendering
+  // Generate barcodes after rendering (for preview)
   useEffect(() => {
-    selectedProducts.forEach((productId, index) => {
+    selectedProducts.slice(0, 6).forEach((productId, index) => {
       const product = products.find((p) => p.id === productId);
       if (product && product.barcode) {
         const barcodeElement = document.getElementById(
-          `barcode-${productId}-${index}`
+          `barcode-${product.id}-${index}`
         );
         if (barcodeElement) {
           JsBarcode(barcodeElement, product.barcode, {
@@ -173,6 +52,42 @@ export default function BarcodeDesignerPage() {
     customTemplate,
   ]);
 
+  // Generate barcodes for print area
+  useEffect(() => {
+    if (!printRef.current) return;
+
+    const validProductIds = selectedProducts.filter((id) => {
+      const product = products.find((p) => p.id === id);
+      return product && product.barcode;
+    });
+
+    validProductIds.forEach((productId) => {
+      const product = products.find((p) => p.id === productId);
+      if (product && product.barcode) {
+        for (let i = 0; i < quantity; i++) {
+          const elementId = `barcode-${product.id}-${i}`;
+          const element = document.getElementById(elementId);
+          if (element) {
+            JsBarcode(element, product.barcode, {
+              format: barcodeType,
+              width: 2,
+              height: getActiveTemplate().height / 3,
+              fontSize: getActiveTemplate().fontSize,
+              displayValue: false,
+            });
+          }
+        }
+      }
+    });
+  }, [
+    selectedProducts,
+    products,
+    barcodeType,
+    quantity,
+    selectedTemplate,
+    customTemplate,
+  ]);
+
   // Get the active template (either selected or custom)
   const getActiveTemplate = (): BarcodeTemplate => {
     return selectedTemplate.id === "custom" ? customTemplate : selectedTemplate;
@@ -183,9 +98,6 @@ export default function BarcodeDesignerPage() {
     const template = BARCODE_TEMPLATES.find((t) => t.id === templateId);
     if (template) {
       setSelectedTemplate(template);
-      if (template.id === "custom") {
-        setCustomTemplate((prev) => ({ ...prev }));
-      }
     }
   };
 
@@ -285,94 +197,6 @@ export default function BarcodeDesignerPage() {
     }
   };
 
-  // Render a barcode label
-  const renderBarcodeLabel = (productId: string, index: number) => {
-    const product = products.find((p) => p.id === productId);
-    if (!product || !product.barcode) return null;
-
-    const template = getActiveTemplate();
-
-    return (
-      <div
-        key={`${productId}-${index}`}
-        className="barcode-label bg-white border border-border flex flex-col items-center justify-center p-2"
-        style={{
-          width: `${template.width}px`,
-          height: `${template.height}px`,
-          padding: `${template.padding}px`,
-          margin: `${template.margin}px`,
-        }}
-      >
-        {template.showName && (
-          <div
-            className="text-center font-medium truncate w-full"
-            style={{ fontSize: `${template.fontSize}pt` }}
-          >
-            {product.name}
-          </div>
-        )}
-
-        <svg
-          id={`barcode-${productId}-${index}`}
-          className="my-1"
-          style={{
-            width: `${template.width * 0.8}px`,
-            height: `${template.height / 3}px`,
-          }}
-        ></svg>
-
-        <div
-          className="flex w-full justify-between"
-          style={{ fontSize: `${template.fontSize}pt` }}
-        >
-          {template.showSku && product.sku && (
-            <div className="text-muted-foreground">SKU: {product.sku}</div>
-          )}
-          {template.showPrice && (
-            <div className="font-bold">${product.price.toFixed(2)}</div>
-          )}
-        </div>
-      </div>
-    );
-  };
-
-  // Render preview barcodes
-  const renderPreviewBarcodes = () => {
-    if (!products || products.length === 0) {
-      return (
-        <div className="text-muted-foreground p-4">No products available</div>
-      );
-    }
-
-    const validProductIds = selectedProducts.filter((id) => {
-      const product = products.find((p) => p.id === id);
-      return product && product.barcode;
-    });
-
-    if (validProductIds.length === 0) {
-      return (
-        <div className="text-muted-foreground p-4">
-          No products with barcodes selected
-        </div>
-      );
-    }
-
-    const previewItems = validProductIds
-      .slice(0, 6)
-      .map((productId, index) => renderBarcodeLabel(productId, index));
-
-    return (
-      <>
-        {previewItems}
-        {validProductIds.length > 6 && (
-          <div className="flex items-center justify-center p-4 text-muted-foreground">
-            +{validProductIds.length - 6} more
-          </div>
-        )}
-      </>
-    );
-  };
-
   // Render print barcodes
   const renderPrintBarcodes = () => {
     const validProductIds = selectedProducts.filter((id) => {
@@ -381,25 +205,29 @@ export default function BarcodeDesignerPage() {
     });
 
     if (validProductIds.length === 0) {
-      return (
-        <div className="text-muted-foreground p-4">
-          No products with barcodes selected
-        </div>
-      );
+      return null;
     }
 
-    const printItems = [];
+    const template = getActiveTemplate();
+    const printItems: React.ReactNode[] = [];
     for (
       let productIndex = 0;
       productIndex < validProductIds.length;
       productIndex++
     ) {
       const productId = validProductIds[productIndex];
+      const product = products.find((p) => p.id === productId);
+      if (!product) continue;
       for (let i = 0; i < quantity; i++) {
-        const element = renderBarcodeLabel(productId, i);
-        if (element) {
-          printItems.push(element);
-        }
+        printItems.push(
+          <BarcodeLabel
+            key={`${productId}-${i}`}
+            product={product}
+            index={i}
+            template={template}
+            barcodeType={barcodeType}
+          />
+        );
       }
     }
 
@@ -417,435 +245,40 @@ export default function BarcodeDesignerPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 min-w-0">
         <div className="md:col-span-1 space-y-6 min-w-0">
-          <Card className="overflow-hidden">
-            <CardHeader>
-              <CardTitle>Barcode Settings</CardTitle>
-              <CardDescription>
-                Configure your barcode design and print settings.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="template">Label Template</Label>
-                <Select
-                  value={selectedTemplate.id}
-                  onValueChange={handleTemplateChange}
-                >
-                  <SelectTrigger id="template">
-                    <SelectValue placeholder="Select template" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {BARCODE_TEMPLATES.map((template) => (
-                      <SelectItem key={template.id} value={template.id}>
-                        {template.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="barcode-type">Barcode Type</Label>
-                <Select value={barcodeType} onValueChange={setBarcodeType}>
-                  <SelectTrigger id="barcode-type">
-                    <SelectValue placeholder="Select barcode type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {BARCODE_TYPES.map((type) => (
-                      <SelectItem key={type.id} value={type.id}>
-                        {type.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="quantity">Quantity (per product)</Label>
-                <div className="flex items-center space-x-2">
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => setQuantity((prev) => Math.max(1, prev - 1))}
-                  >
-                    <Minus className="h-4 w-4" />
-                  </Button>
-                  <Input
-                    id="quantity"
-                    type="number"
-                    min="1"
-                    value={quantity}
-                    onChange={(e) =>
-                      setQuantity(
-                        Math.max(1, Number.parseInt(e.target.value) || 1)
-                      )
-                    }
-                    className="text-center"
-                  />
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => setQuantity((prev) => prev + 1)}
-                  >
-                    <Plus className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-
-              <div className="flex items-center space-x-2 pt-2">
-                <Switch
-                  id="preview"
-                  checked={showPreview}
-                  onCheckedChange={setShowPreview}
-                />
-                <Label htmlFor="preview">Show Preview</Label>
-              </div>
-            </CardContent>
-            <CardFooter className="flex justify-between">
-              <Button variant="outline" onClick={() => setSelectedProducts([])}>
-                Clear Selection
-              </Button>
-              <Button
-                onClick={handlePrint}
-                disabled={selectedProducts.length === 0}
-              >
-                <Printer className="mr-2 h-4 w-4" />
-                Print Barcodes
-              </Button>
-            </CardFooter>
-          </Card>
+          <BarcodeSettingsCard
+            selectedTemplate={selectedTemplate}
+            onTemplateChange={handleTemplateChange}
+            barcodeType={barcodeType}
+            onBarcodeTypeChange={setBarcodeType}
+            quantity={quantity}
+            onQuantityChange={setQuantity}
+            showPreview={showPreview}
+            onShowPreviewChange={setShowPreview}
+            selectedProductsCount={selectedProducts.length}
+            onClearSelection={() => setSelectedProducts([])}
+            onPrint={handlePrint}
+          />
 
           {selectedTemplate.id === "custom" && (
-            <Card className="overflow-hidden">
-              <CardHeader>
-                <CardTitle>Custom Template</CardTitle>
-                <CardDescription>
-                  Customize your barcode template.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="width">Width (px)</Label>
-                    <Input
-                      id="width"
-                      type="number"
-                      value={customTemplate.width}
-                      onChange={(e) =>
-                        setCustomTemplate({
-                          ...customTemplate,
-                          width: Number.parseInt(e.target.value) || 100,
-                        })
-                      }
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="height">Height (px)</Label>
-                    <Input
-                      id="height"
-                      type="number"
-                      value={customTemplate.height}
-                      onChange={(e) =>
-                        setCustomTemplate({
-                          ...customTemplate,
-                          height: Number.parseInt(e.target.value) || 50,
-                        })
-                      }
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="labels-per-row">Labels Per Row</Label>
-                  <Input
-                    id="labels-per-row"
-                    type="number"
-                    min="1"
-                    max="10"
-                    value={customTemplate.labelsPerRow}
-                    onChange={(e) =>
-                      setCustomTemplate({
-                        ...customTemplate,
-                        labelsPerRow: Number.parseInt(e.target.value) || 1,
-                      })
-                    }
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="font-size">Font Size (pt)</Label>
-                  <Slider
-                    id="font-size"
-                    min={6}
-                    max={16}
-                    step={1}
-                    value={[customTemplate.fontSize]}
-                    onValueChange={([value]) =>
-                      setCustomTemplate({
-                        ...customTemplate,
-                        fontSize: value,
-                      })
-                    }
-                  />
-                  <div className="text-center text-sm text-muted-foreground">
-                    {customTemplate.fontSize}pt
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="margin">Margin (px)</Label>
-                    <Input
-                      id="margin"
-                      type="number"
-                      min="0"
-                      value={customTemplate.margin}
-                      onChange={(e) =>
-                        setCustomTemplate({
-                          ...customTemplate,
-                          margin: Number.parseInt(e.target.value) || 0,
-                        })
-                      }
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="padding">Padding (px)</Label>
-                    <Input
-                      id="padding"
-                      type="number"
-                      min="0"
-                      value={customTemplate.padding}
-                      onChange={(e) =>
-                        setCustomTemplate({
-                          ...customTemplate,
-                          padding: Number.parseInt(e.target.value) || 0,
-                        })
-                      }
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2 pt-2">
-                  <div className="flex items-center space-x-2">
-                    <Switch
-                      id="show-name"
-                      checked={customTemplate.showName}
-                      onCheckedChange={(checked) =>
-                        setCustomTemplate({
-                          ...customTemplate,
-                          showName: checked,
-                        })
-                      }
-                    />
-                    <Label htmlFor="show-name">Show Product Name</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Switch
-                      id="show-price"
-                      checked={customTemplate.showPrice}
-                      onCheckedChange={(checked) =>
-                        setCustomTemplate({
-                          ...customTemplate,
-                          showPrice: checked,
-                        })
-                      }
-                    />
-                    <Label htmlFor="show-price">Show Price</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Switch
-                      id="show-sku"
-                      checked={customTemplate.showSku}
-                      onCheckedChange={(checked) =>
-                        setCustomTemplate({
-                          ...customTemplate,
-                          showSku: checked,
-                        })
-                      }
-                    />
-                    <Label htmlFor="show-sku">Show SKU</Label>
-                  </div>
-                </div>
-              </CardContent>
-              <CardFooter>
-                <Button
-                  variant="outline"
-                  className="w-full"
-                  onClick={() => setCustomTemplate(BARCODE_TEMPLATES[3])}
-                >
-                  <RefreshCw className="mr-2 h-4 w-4" />
-                  Reset to Default
-                </Button>
-              </CardFooter>
-            </Card>
+            <CustomTemplateCard
+              template={customTemplate}
+              onTemplateChange={setCustomTemplate}
+              onReset={() => setCustomTemplate(BARCODE_TEMPLATES[3])}
+            />
           )}
         </div>
 
         <div className="md:col-span-2 min-w-0">
-          <Card className="h-full flex flex-col overflow-hidden min-w-0">
-            <CardHeader>
-              <CardTitle>Select Products</CardTitle>
-              <CardDescription>
-                Choose products to generate barcodes for.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="flex-grow overflow-hidden flex flex-col min-w-0">
-              <div className="flex justify-between mb-4 min-w-0">
-                <Button variant="outline" size="sm" onClick={handleSelectAll}>
-                  {selectedProducts.length === products.length ? (
-                    <>
-                      <X className="mr-2 h-4 w-4" />
-                      Deselect All
-                    </>
-                  ) : (
-                    <>
-                      <Check className="mr-2 h-4 w-4" />
-                      Select All
-                    </>
-                  )}
-                </Button>
-                <div className="text-sm text-muted-foreground">
-                  {selectedProducts.length} of {products.length} products
-                  selected
-                </div>
-              </div>
-
-              <div className="overflow-auto flex-grow border rounded-md min-w-0">
-                <Table>
-                  <TableHeader className="sticky top-0 bg-muted z-10">
-                    <TableRow>
-                      <TableHead className="w-12">Select</TableHead>
-                      <TableHead>Product</TableHead>
-                      <TableHead>Barcode</TableHead>
-                      <TableHead>Price</TableHead>
-                      <TableHead>Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {products.length > 0 ? (
-                      products.map((product) => (
-                        <TableRow key={product.id}>
-                          <TableCell>
-                            <div className="flex items-center justify-center">
-                              <Checkbox
-                                checked={selectedProducts.includes(product.id)}
-                                onCheckedChange={() => handleProductSelect(product.id)}
-                                disabled={!product.barcode}
-                              />
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              <div className="w-8 h-8 rounded bg-muted flex items-center justify-center overflow-hidden">
-                                {product.image ? (
-                                  <img
-                                    src={product.image || "/placeholder.svg"}
-                                    alt={product.name}
-                                    className="h-full w-full object-cover"
-                                  />
-                                ) : (
-                                  <Package className="h-4 w-4 text-muted-foreground" />
-                                )}
-                              </div>
-                              <div>
-                                <div className="font-medium">{product.name}</div>
-                                {product.sku && (
-                                  <div className="text-xs text-muted-foreground">
-                                    SKU: {product.sku}
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            {product.barcode ? (
-                              <div className="font-mono text-xs">
-                                {product.barcode}
-                              </div>
-                            ) : (
-                              <div className="text-xs text-destructive">
-                                No barcode
-                              </div>
-                            )}
-                          </TableCell>
-                          <TableCell>${product.price.toFixed(2)}</TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                disabled={!product.barcode}
-                                onClick={() => {
-                                  if (!selectedProducts.includes(product.id)) {
-                                    handleProductSelect(product.id);
-                                  }
-                                  handlePrint();
-                                }}
-                              >
-                                <Printer className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => {
-                                  // Navigate to product edit page
-                                  toast({
-                                    title: "Edit Product",
-                                    description:
-                                      "Navigate to product edit page to add or edit barcode",
-                                  });
-                                }}
-                              >
-                                <Pencil className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    ) : (
-                      <TableRow>
-                        <TableCell colSpan={5} className="py-8">
-                          <Empty>
-                            <EmptyHeader>
-                              <EmptyMedia variant="icon">
-                                <Package className="h-6 w-6" />
-                              </EmptyMedia>
-                              <EmptyTitle>No products found</EmptyTitle>
-                              <EmptyDescription>
-                                Add products with barcodes to get started.
-                              </EmptyDescription>
-                            </EmptyHeader>
-                          </Empty>
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-
-              {showPreview && selectedProducts.length > 0 && (
-                <div className="mt-6 min-w-0">
-                  <h3 className="text-lg font-medium mb-2">Preview</h3>
-                  <div className="border rounded-md p-4 bg-muted/30 overflow-auto min-w-0">
-                    <div
-                      className="flex flex-wrap justify-start min-w-0"
-                      style={{
-                        maxWidth: `${
-                          getActiveTemplate().width *
-                            getActiveTemplate().labelsPerRow +
-                          getActiveTemplate().margin *
-                            2 *
-                            getActiveTemplate().labelsPerRow
-                        }px`,
-                      }}
-                    >
-                      {renderPreviewBarcodes()}
-                    </div>
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          <ProductSelectionTable
+            products={products}
+            selectedProducts={selectedProducts}
+            onProductSelect={handleProductSelect}
+            onSelectAll={handleSelectAll}
+            showPreview={showPreview}
+            template={getActiveTemplate()}
+            barcodeType={barcodeType}
+            onPrint={handlePrint}
+          />
         </div>
       </div>
 

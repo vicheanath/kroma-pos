@@ -1,10 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import { usePosData, type Product } from "@/components/pos-data-provider";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -12,48 +9,13 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-  Search,
-  Plus,
-  MoreVertical,
-  Edit,
-  Trash2,
-  Package,
-  AlertTriangle,
-} from "lucide-react";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import {
-  Empty,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-  EmptyDescription,
-} from "@/components/ui/empty";
 import AddProductDialog from "@/components/AddProductDialog";
 import EditProductDialog from "@/components/EditProductDialog";
 import DeleteProductDialog from "@/components/DeleteProductDialog";
-
+import { ProductFilters } from "./components/ProductFilters";
+import { LowStockAlert } from "./components/LowStockAlert";
+import { ProductTable } from "./components/ProductTable";
+import { Package } from "lucide-react";
 
 export default function ProductsPage() {
   const {
@@ -70,7 +32,6 @@ export default function ProductsPage() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [currentProduct, setCurrentProduct] = useState<Product | null>(null);
-
 
   const handleAddProduct = (newProduct: Product) => {
     addNewProduct(newProduct);
@@ -111,8 +72,6 @@ export default function ProductsPage() {
       }
     });
 
-  
-
   // Handle deleting a product
   const handleDeleteProduct = () => {
     if (!currentProduct) return;
@@ -140,185 +99,66 @@ export default function ProductsPage() {
     show: { y: 0, opacity: 1 },
   };
   return (
-    <div className="space-y-4 overflow-hidden min-w-0">
-      <div className="flex flex-col sm:flex-row gap-4 justify-between min-w-0">
-        <div className="relative flex-1 min-w-0">
-          <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search products..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9"
-          />
-        </div>
-
-        <div className="flex gap-2 flex-shrink-0">
-          <Select value={filterCategory} onValueChange={setFilterCategory}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Category" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Categories</SelectItem>
-              {categories.map((category) => (
-                <SelectItem key={category.id} value={category.id}>
-                  {category.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Select value={sortBy} onValueChange={setSortBy}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Sort by" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="name">Name</SelectItem>
-              <SelectItem value="price">Price</SelectItem>
-              <SelectItem value="stock">Stock</SelectItem>
-              <SelectItem value="category">Category</SelectItem>
-            </SelectContent>
-          </Select>
-
-          <Button onClick={() => setIsAddDialogOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            Add Product
-          </Button>
+    <div className="space-y-6 overflow-hidden min-w-0">
+      {/* Header Section */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Products</h1>
+          <p className="text-muted-foreground">
+            Manage your product inventory and catalog
+          </p>
         </div>
       </div>
 
-      {products.filter((p) => p.stock < 5).length > 0 && (
-        <Alert variant="destructive">
-          <AlertTriangle className="h-4 w-4" />
-          <AlertTitle>Low Stock Alert</AlertTitle>
-          <AlertDescription>
-            {products.filter((p) => p.stock < 5).length} products are running
-            low on stock. Please restock soon.
-          </AlertDescription>
-        </Alert>
-      )}
+      {/* Filters Section */}
+      <Card className="border-2 shadow-sm">
+        <CardContent className="pt-6">
+          <ProductFilters
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            filterCategory={filterCategory}
+            onFilterCategoryChange={setFilterCategory}
+            sortBy={sortBy}
+            onSortByChange={setSortBy}
+            categories={categories}
+            onAddProduct={() => setIsAddDialogOpen(true)}
+          />
+        </CardContent>
+      </Card>
 
-      <Card className="overflow-hidden">
-        <CardHeader>
-          <CardTitle>Product Inventory</CardTitle>
+      <LowStockAlert products={products} />
+
+      {/* Products Table */}
+      <Card className="border-2 shadow-sm overflow-hidden">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-lg font-semibold flex items-center gap-2">
+              <Package className="h-5 w-5 text-primary" />
+              Product Inventory
+            </CardTitle>
+            <p className="text-sm text-muted-foreground">
+              {filteredProducts.length} of {products.length} products
+            </p>
+          </div>
         </CardHeader>
-        <CardContent className="overflow-hidden min-w-0">
-          <div className="overflow-x-auto min-w-0">
-            <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Product</TableHead>
-                <TableHead>Category</TableHead>
-                <TableHead>Price</TableHead>
-                <TableHead>Stock</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              <AnimatePresence>
-                {filteredProducts.map((product) => (
-                  <motion.tr
-                    key={product.id}
-                    variants={itemVariants}
-                    initial="hidden"
-                    animate="show"
-                    exit={{ opacity: 0, height: 0 }}
-                  >
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded bg-muted flex items-center justify-center overflow-hidden">
-                          {product.image ? (
-                            <img
-                              src={product.image || "/placeholder.svg"}
-                              alt={product.name}
-                              className="h-full w-full object-cover rounded"
-                            />
-                          ) : (
-                            <Package className="h-5 w-5 text-muted-foreground" />
-                          )}
-                        </div>
-                        <div>
-                          <p className="font-medium">{product.name}</p>
-                          {product.barcode && (
-                            <p className="text-xs text-muted-foreground">
-                              {product.barcode}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>{product.category.name}</TableCell>
-                    <TableCell>${product.price.toFixed(2)}</TableCell>
-                    <TableCell>
-                      <span
-                        className={
-                          product.stock <= 5 ? "text-red-500 font-medium" : ""
-                        }
-                      >
-                        {product.stock}
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <MoreVertical className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem
-                            onClick={() => {
-                              setCurrentProduct(product);
-                              setIsEditDialogOpen(true);
-                            }}
-                          >
-                            <Edit className="mr-2 h-4 w-4" />
-                            Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            className="text-destructive"
-                            onClick={() => {
-                              setCurrentProduct(product);
-                              setIsDeleteDialogOpen(true);
-                            }}
-                          >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </motion.tr>
-                ))}
-              </AnimatePresence>
-
-              {filteredProducts.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={5} className="py-8">
-                    <Empty>
-                      <EmptyHeader>
-                        <EmptyMedia variant="icon">
-                          <Package className="h-6 w-6" />
-                        </EmptyMedia>
-                        <EmptyTitle>No products found</EmptyTitle>
-                        <EmptyDescription>
-                          {searchQuery || filterCategory !== "all"
-                            ? "Try adjusting your search or filter criteria."
-                            : "Get started by adding your first product."}
-                        </EmptyDescription>
-                      </EmptyHeader>
-                    </Empty>
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
+        <CardContent className="overflow-hidden min-w-0 p-0">
+          <div className="rounded-md border">
+            <ProductTable
+              products={filteredProducts}
+              searchQuery={searchQuery}
+              filterCategory={filterCategory}
+              onEdit={(product) => {
+                setCurrentProduct(product);
+                setIsEditDialogOpen(true);
+              }}
+              onDelete={(product) => {
+                setCurrentProduct(product);
+                setIsDeleteDialogOpen(true);
+              }}
+              itemVariants={itemVariants}
+            />
           </div>
         </CardContent>
-        <CardFooter>
-          <p className="text-sm text-muted-foreground">
-            Showing {filteredProducts.length} of {products.length} products
-          </p>
-        </CardFooter>
       </Card>
 
       <AddProductDialog
